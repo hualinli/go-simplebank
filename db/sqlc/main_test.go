@@ -17,10 +17,10 @@ var testQueries *Queries
 
 func TestMain(m *testing.M) {
 	pool, err := pgxpool.New(context.Background(), dbSource)
-	defer pool.Close()
 	if err != nil {
 		log.Fatal("cannot connect to db:", err)
 	}
+	defer pool.Close()
 
 	testQueries = New(pool)
 
