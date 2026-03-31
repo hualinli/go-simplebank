@@ -23,20 +23,28 @@ execTx方法接受一个函数参数，该函数接受一个*Queries类型的参
 如果没有错误，我们提交事务并返回nil。
 */
 
-type Store struct {
+// Store接口定义了所有的数据库操作，包括基本的CRUD操作和复杂的业务逻辑（如TransferTx）。
+// 通过定义Store接口，我们可以将数据库操作与业务逻辑分离，便于进行Mock测试和代码维护。
+type Store interface {
+	Querier
+	TransferTx(ctx context.Context, arg TransferTxParams) (TransferTxResult, error)
+}
+
+// SQLStore提供了Store接口的实现
+type SQLStore struct {
 	db *pgxpool.Pool
 	*Queries
 }
 
-func NewStore(db *pgxpool.Pool) *Store {
-	return &Store{
+func NewStore(db *pgxpool.Pool) Store {
+	return &SQLStore{
 		db:      db,
 		Queries: New(db),
 	}
 }
 
 // note： execTX不导出，仅公开业务函数，让service层调用，简化事务处理
-func (store *Store) execTx(ctx context.Context, fn func(*Queries) error) error {
+func (store *SQLStore) execTx(ctx context.Context, fn func(*Queries) error) error {
 	tx, err := store.db.Begin(ctx)
 	if err != nil {
 		return err
@@ -75,7 +83,7 @@ type TransferTxResult struct {
 // 为了解决这个问题，可以使用行级锁（SELECT ... FOR UPDATE）来锁定相关的账户记录，确保同一时间只有一个事务能够修改账户余额。
 // note：2. 死锁问题：加锁之后，在高并发环境下，可能会出现多个事务相互等待对方释放锁的情况，导致死锁。
 // 为了避免死锁，可以确保所有事务以相同的顺序访问资源，或者使用数据库提供的死锁检测机制来自动回滚其中一个事务。
-func (store *Store) TransferTx(ctx context.Context, arg TransferTxParams) (TransferTxResult, error) {
+func (store *SQLStore) TransferTx(ctx context.Context, arg TransferTxParams) (TransferTxResult, error) {
 	var result TransferTxResult
 	err := store.execTx(ctx, func(q *Queries) error {
 		var err error
