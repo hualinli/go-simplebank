@@ -13,6 +13,9 @@ jobs:
 
   build:
     runs-on: ubuntu-latest
+    env:
+      DB_SOURCE: postgresql://myuser:mypassword@localhost:5432/simple_bank?sslmode=disable
+      SERVER_ADDRESS: 0.0.0.0:8080
     services:
       postgres:
         image: postgres:latest
@@ -45,4 +48,4 @@ jobs:
       run: make migrateup
 
     - name: Test
-      run: make test
+      run: go test -v -cover ./...

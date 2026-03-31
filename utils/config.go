@@ -1,6 +1,8 @@
 package utils
 
-import "github.com/spf13/viper"
+import (
+	"github.com/spf13/viper"
+)
 
 type Config struct {
 	DBSource      string `mapstructure:"DB_SOURCE"`
@@ -14,9 +16,14 @@ func LoadConfig(path string) (Config, error) {
 	v.SetConfigType("env")
 	v.AutomaticEnv()
 
+	v.BindEnv("DB_SOURCE")
+	v.BindEnv("SERVER_ADDRESS")
+
 	err := v.ReadInConfig()
 	if err != nil {
-		return Config{}, err
+		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
+			return Config{}, err
+		}
 	}
 
 	var config Config
