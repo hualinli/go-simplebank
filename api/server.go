@@ -23,6 +23,12 @@ func NewServer(store db.Store) *Server {
 	}
 
 	// 定义路由和处理函数
+	router.POST("/users", server.createUser)
+	router.GET("/users/:username", server.getUser)
+	router.PUT("/users/:username", server.updateUser)
+	router.DELETE("/users/:username", server.deleteUser)
+	// TODO: add login route
+
 	router.POST("/accounts", server.createAccount)
 	router.GET("/accounts/:id", server.getAccount)
 	router.GET("/accounts", server.listAccounts)
