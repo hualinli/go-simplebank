@@ -12,8 +12,14 @@ dropdb:
 migrateup:
 	migrate -path db/migrations -database $(DB_SOURCE) -verbose up
 
+migrateup1:
+	migrate -path db/migrations -database $(DB_SOURCE) -verbose up 1
+
 migratedown:
 	migrate -path db/migrations -database $(DB_SOURCE) -verbose down
+
+migratedown1:
+	migrate -path db/migrations -database $(DB_SOURCE) -verbose down 1
 
 migratedownall:
 	migrate -path db/migrations -database $(DB_SOURCE) -verbose drop
@@ -30,4 +36,4 @@ server:
 mock:
 	mockgen -package=mockdb -destination ./db/mock/store.go ./db/sqlc Store
 
-.PHONY: postgres createdb dropdb migrateup migratedown migratedownall sqlc
+.PHONY: postgres createdb dropdb migrateup migratedown migratedownall sqlc test server mocks

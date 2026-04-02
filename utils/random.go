@@ -17,7 +17,7 @@ func RandomInt(min, max int64) int64 {
 
 func RandomString(n int) string {
 	var b strings.Builder
-	for i := 0; i < n; i++ {
+	for range n {
 		b.WriteByte(alphabet[rand.IntN(len(alphabet))])
 	}
 	return b.String()
@@ -25,6 +25,18 @@ func RandomString(n int) string {
 
 func RandomOwner() string {
 	return RandomString(6)
+}
+
+func RandomUsername() string {
+	return RandomString(6)
+}
+
+func RandomFullName() string {
+	return RandomString(6) + " " + RandomString(6)
+}
+
+func RandomEmail() string {
+	return RandomString(6) + "@example.com"
 }
 
 func RandomMoney() int64 {
