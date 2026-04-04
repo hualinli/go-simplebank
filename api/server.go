@@ -64,11 +64,14 @@ func (server *Server) setupRouter() {
 	}
 	e := router.Group("/entries").Use(authMiddleware(server.tokenMaker))
 	{
-		e.GET("/:id", server.getEntry)
-		e.GET("", server.listEntries)
+		e.GET("/:account/:id", server.getEntry)
+		e.GET("/:account", server.listEntries)
 	}
-	// TODO: 完善Transfers
-	router.POST("/transfers", server.createTransfer)
+	t := router.Group("/transfers").Use(authMiddleware(server.tokenMaker))
+	{
+		t.POST("/", server.createTransfer)
+		// TODO: add more APIs for transfer
+	}
 
 	server.router = router
 }
