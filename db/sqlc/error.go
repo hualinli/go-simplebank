@@ -12,26 +12,28 @@ import (
 var (
 	ErrRecordNotFound      = errors.New("record not found")
 	ErrForeignKeyViolation = errors.New("foreign key violation")
+	ErrUniqueViolation     = errors.New("unique violation")
+	ErrInternalError       = errors.New("internal error")
 )
 
 func IsNotFoundError(err error) bool {
-	return errors.Is(err, pgx.ErrNoRows)
+	return errors.Is(err, pgx.ErrNoRows) || errors.Is(err, ErrRecordNotFound)
 }
 
 func IsForeignKeyViolationError(err error) bool {
-	return false
+	return errors.Is(err, ErrForeignKeyViolation) // TODO: 添加db层的错误
 }
 
 func IsUniqueViolationError(err error) bool {
 	if pgErr, ok := errors.AsType[*pgconn.PgError](err); ok { // Go 1.26 New Feature: errors.AsType
 		return pgErr.Code == "23505"
 	}
-	return false
+	return errors.Is(err, ErrUniqueViolation)
 }
 
 func IsInternalError(err error) bool {
 	if pgErr, ok := errors.AsType[*pgconn.PgError](err); ok {
 		return pgErr.Code == "XX000" || pgErr.Code == "XX001" || pgErr.Code == "XX002"
 	}
-	return false
+	return errors.Is(err, ErrInternalError)
 }
