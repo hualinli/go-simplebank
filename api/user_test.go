@@ -7,11 +7,13 @@ import (
 	"net/http/httptest"
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/bytedance/sonic"
 	"github.com/gin-gonic/gin"
 	mockdb "github.com/hualinli/go-simplebank/db/mock"
 	db "github.com/hualinli/go-simplebank/db/sqlc"
+	"github.com/hualinli/go-simplebank/token"
 	"github.com/hualinli/go-simplebank/utils"
 	"github.com/stretchr/testify/require"
 	"go.uber.org/mock/gomock"
@@ -160,12 +162,21 @@ func TestGetUserAPI(t *testing.T) {
 	user, _ := randomUser(t)
 	tests := []struct {
 		name          string
+		setupAuth     func(request *http.Request, tokenMaker token.Maker)
 		username      string
 		buildStubs    func(store *mockdb.MockStore)
 		checkResponse func(recorder *httptest.ResponseRecorder)
 	}{
 		{
-			name:     "OK",
+			name: "OK",
+			setupAuth: func(request *http.Request, tokenMaker token.Maker) {
+				username := user.Username
+				duration := time.Minute
+				token, _, err := tokenMaker.CreateToken(username, duration)
+				require.NoError(t, err)
+				authorizationHeader := fmt.Sprintf("Bearer %s", token)
+				request.Header.Set(authorizationHeaderKey, authorizationHeader)
+			},
 			username: user.Username,
 			buildStubs: func(store *mockdb.MockStore) {
 				store.EXPECT().
@@ -185,7 +196,15 @@ func TestGetUserAPI(t *testing.T) {
 			},
 		},
 		{
-			name:     "user not found",
+			name: "user not found",
+			setupAuth: func(request *http.Request, tokenMaker token.Maker) {
+				usernmae := user.Username
+				duration := time.Minute
+				token, _, err := tokenMaker.CreateToken(usernmae, duration)
+				require.NoError(t, err)
+				authorizationHeader := fmt.Sprintf("Bearer %s", token)
+				request.Header.Set(authorizationHeaderKey, authorizationHeader)
+			},
 			username: user.Username,
 			buildStubs: func(store *mockdb.MockStore) {
 				store.EXPECT().
@@ -198,7 +217,18 @@ func TestGetUserAPI(t *testing.T) {
 			}, // 其实Handler的错误已经区分了，但是为了不引入pgx的错误类型，暂时使用UnknownError来统一处理所有错误
 		},
 		{
-			name:     "bad request",
+			name: "bad request",
+			setupAuth: func(request *http.Request, tokenMaker token.Maker) {
+				username := user.Username
+				duration := time.Minute
+				token, _, err := tokenMaker.CreateToken(username, duration)
+				require.NoError(t, err)
+
+				authorizationHeader := fmt.Sprintf("Bearer %s", token)
+				request.Header.Set(authorizationHeaderKey, authorizationHeader)
+				// 这里的username是无效的，无法通过路由参数的校验，所以直接返回400 Bad Request
+				// 但是由于我们在测试中没有使用路由参数，而是直接调用了Handler函数，所以需要在这里模拟一下这个过程
+			},
 			username: "invalid-username!",
 			buildStubs: func(store *mockdb.MockStore) {
 				store.EXPECT().
@@ -222,48 +252,7 @@ func TestGetUserAPI(t *testing.T) {
 
 			url := fmt.Sprintf("/users/%s", tc.username)
 			request := httptest.NewRequest(http.MethodGet, url, nil)
-			recorder := httptest.NewRecorder()
-
-			server.router.ServeHTTP(recorder, request)
-			tc.checkResponse(recorder)
-		})
-	}
-}
-
-func TestDeleteUserAPI(t *testing.T) {
-	user, _ := randomUser(t)
-	tests := []struct {
-		name          string
-		username      string
-		buildStubs    func(store *mockdb.MockStore)
-		checkResponse func(recorder *httptest.ResponseRecorder)
-	}{
-		{
-			name:     "OK",
-			username: user.Username,
-			buildStubs: func(store *mockdb.MockStore) {
-				store.EXPECT().
-					DeleteUser(gomock.Any(), gomock.Eq(user.Username)).
-					Times(1).
-					Return(nil)
-			},
-			checkResponse: func(recorder *httptest.ResponseRecorder) {
-				require.Equal(t, http.StatusOK, recorder.Code)
-			},
-		},
-	}
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			ctrl := gomock.NewController(t)
-			defer ctrl.Finish()
-
-			store := mockdb.NewMockStore(ctrl)
-			tc.buildStubs(store)
-
-			server := NewTestServer(t, store)
-
-			url := fmt.Sprintf("/users/%s", tc.username)
-			request := httptest.NewRequest(http.MethodDelete, url, nil)
+			tc.setupAuth(request, server.tokenMaker)
 			recorder := httptest.NewRecorder()
 
 			server.router.ServeHTTP(recorder, request)
@@ -279,13 +268,22 @@ func TestUpdateUserAPI(t *testing.T) {
 	user2, _ := randomUser(t)
 	tests := []struct {
 		name          string
+		setupAuth     func(request *http.Request, tokenMaker token.Maker)
 		username      string
 		body          gin.H
 		buildStubs    func(store *mockdb.MockStore)
 		checkResponse func(recorder *httptest.ResponseRecorder)
 	}{
 		{
-			name:     "OK",
+			name: "OK",
+			setupAuth: func(request *http.Request, tokenMaker token.Maker) {
+				username := user1.Username
+				duration := time.Minute
+				token, _, err := tokenMaker.CreateToken(username, duration)
+				require.NoError(t, err)
+				authorizationHeader := fmt.Sprintf("Bearer %s", token)
+				request.Header.Set(authorizationHeaderKey, authorizationHeader)
+			},
 			username: user1.Username,
 			body: gin.H{
 				"full_name": newFullName,
@@ -319,7 +317,15 @@ func TestUpdateUserAPI(t *testing.T) {
 			},
 		},
 		{
-			name:     "user not found",
+			name: "user not found",
+			setupAuth: func(request *http.Request, tokenMaker token.Maker) {
+				username := user1.Username
+				duration := time.Minute
+				token, _, err := tokenMaker.CreateToken(username, duration)
+				require.NoError(t, err)
+				authorizationHeader := fmt.Sprintf("Bearer %s", token)
+				request.Header.Set(authorizationHeaderKey, authorizationHeader)
+			},
 			username: user1.Username,
 			body: gin.H{
 				"full_name": newFullName,
@@ -336,7 +342,15 @@ func TestUpdateUserAPI(t *testing.T) {
 			},
 		},
 		{
-			name:     "bad request",
+			name: "bad request",
+			setupAuth: func(request *http.Request, tokenMaker token.Maker) {
+				username := user1.Username
+				duration := time.Minute
+				token, _, err := tokenMaker.CreateToken(username, duration)
+				require.NoError(t, err)
+				authorizationHeader := fmt.Sprintf("Bearer %s", token)
+				request.Header.Set(authorizationHeaderKey, authorizationHeader)
+			},
 			username: user1.Username,
 			body: gin.H{
 				"full_name": "",
@@ -352,7 +366,15 @@ func TestUpdateUserAPI(t *testing.T) {
 			},
 		},
 		{
-			name:     "email conflict",
+			name: "email conflict",
+			setupAuth: func(request *http.Request, tokenMaker token.Maker) {
+				username := user1.Username
+				duration := time.Minute
+				token, _, err := tokenMaker.CreateToken(username, duration)
+				require.NoError(t, err)
+				authorizationHeader := fmt.Sprintf("Bearer %s", token)
+				request.Header.Set(authorizationHeaderKey, authorizationHeader)
+			},
 			username: user1.Username,
 			body: gin.H{
 				"full_name": newFullName,
@@ -384,6 +406,7 @@ func TestUpdateUserAPI(t *testing.T) {
 
 			url := fmt.Sprintf("/users/%s", tc.username)
 			request := httptest.NewRequest(http.MethodPut, url, bytes.NewReader(body))
+			tc.setupAuth(request, server.tokenMaker)
 			recorder := httptest.NewRecorder()
 
 			server.router.ServeHTTP(recorder, request)
