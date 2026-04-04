@@ -1,15 +1,20 @@
 package api
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 	db "github.com/hualinli/go-simplebank/db/sqlc"
+	"github.com/hualinli/go-simplebank/token"
+
+)
+var (
+	ErrAccountNotFound = fmt.Errorf("account not found")
 )
 
 type createAccountRequest struct {
-	Owner    string `json:"owner" binding:"required"`
-	Currency string `json:"currency" binding:"required,oneof=USD EUR CNY"`
+	Currency string `json:"currency" binding:"required,currency"`
 }
 
 type createAccountResponse struct {
@@ -25,14 +30,16 @@ func (server *Server) createAccount(ctx *gin.Context) {
 		ctx.JSON(http.StatusBadRequest, errResponse(err))
 		return
 	}
-	// TODO: validation
+	authorizationPayload := ctx.MustGet(authorizationPayloadKey).(*token.Payload)
+	owner := authorizationPayload.Username
 	arg := db.CreateAccountParams{
-		Owner:    req.Owner,
+		Owner:    owner,
 		Currency: req.Currency,
 		Balance:  0,
 	}
 	account, err := server.store.CreateAccount(ctx, arg)
 	if err != nil {
+		// TODO: 测试创建相同币种账户时的报错，并包装错误
 		ctx.JSON(http.StatusInternalServerError, errResponse(err))
 		return
 	}
@@ -63,10 +70,20 @@ func (server *Server) getAccount(ctx *gin.Context) {
 		return
 	}
 
-	// TODO: validation
+	// 用户只能看自己的账户信息
+	authorizationPayload := ctx.MustGet(authorizationPayloadKey).(*token.Payload)
+	owner := authorizationPayload.Username
+
 	account, err := server.store.GetAccount(ctx, req.ID)
 	if err != nil {
+		if db.IsNotFoundError(err) {
+			ctx.JSON(http.StatusNotFound, errResponse(ErrAccountNotFound))
+		}
 		ctx.JSON(http.StatusInternalServerError, errResponse(err))
+		return
+	}
+	if account.Owner != owner {
+		ctx.JSON(http.StatusForbidden, errResponse(fmt.Errorf("account does not belong to the authenticated user")))
 		return
 	}
 	rsp := getAccountResponse{
@@ -93,7 +110,10 @@ func (server *Server) listAccounts(ctx *gin.Context) {
 		ctx.JSON(http.StatusBadRequest, errResponse(err))
 		return
 	}
+	authorizationPayload := ctx.MustGet(authorizationPayloadKey).(*token.Payload)
+	owner := authorizationPayload.Username
 	arg := db.ListAccountsParams{
+		Owner:  owner,
 		Limit:  req.PageSize,
 		Offset: (req.PageID - 1) * req.PageSize,
 	}
@@ -124,10 +144,17 @@ func (server *Server) deleteAccount(ctx *gin.Context) {
 		ctx.JSON(http.StatusBadRequest, errResponse(err))
 		return
 	}
-	err := server.store.DeleteAccount(ctx, req.ID)
+	authorizationPayload := ctx.MustGet(authorizationPayloadKey).(*token.Payload)
+	owner := authorizationPayload.Username
+	arg := db.DeleteAccountParams{
+		ID:    req.ID,
+		Owner: owner,
+	}
+	account, err := server.store.DeleteAccount(ctx, arg)
 	if err != nil {
+		// TODO: 测试删除不存在的账户时的报错，并包装错误
 		ctx.JSON(http.StatusInternalServerError, errResponse(err))
 		return
 	}
-	ctx.JSON(http.StatusOK, gin.H{"message": "account deleted"}) // TODO: 响应内容待统一
+	ctx.JSON(http.StatusOK, gin.H{"message": "account deleted", "account": account}) // TODO: 响应内容待统一
 }

@@ -63,13 +63,26 @@ func (q *Queries) CreateAccount(ctx context.Context, arg CreateAccountParams) (A
 	return i, err
 }
 
-const deleteAccount = `-- name: DeleteAccount :exec
-DELETE FROM accounts WHERE id = $1
+const deleteAccount = `-- name: DeleteAccount :one
+DELETE FROM accounts WHERE id = $1 AND owner = $2 RETURNING id, owner, balance, currency, created_at
 `
 
-func (q *Queries) DeleteAccount(ctx context.Context, id int64) error {
-	_, err := q.db.Exec(ctx, deleteAccount, id)
-	return err
+type DeleteAccountParams struct {
+	ID    int64  `db:"id"`
+	Owner string `db:"owner"`
+}
+
+func (q *Queries) DeleteAccount(ctx context.Context, arg DeleteAccountParams) (Account, error) {
+	row := q.db.QueryRow(ctx, deleteAccount, arg.ID, arg.Owner)
+	var i Account
+	err := row.Scan(
+		&i.ID,
+		&i.Owner,
+		&i.Balance,
+		&i.Currency,
+		&i.CreatedAt,
+	)
+	return i, err
 }
 
 const getAccount = `-- name: GetAccount :one
@@ -108,17 +121,19 @@ func (q *Queries) GetAccountForUpdate(ctx context.Context, id int64) (Account, e
 
 const listAccounts = `-- name: ListAccounts :many
 SELECT id, owner, balance, currency, created_at FROM accounts
+WHERE owner = $1
 ORDER BY id
-LIMIT $1 OFFSET $2
+LIMIT $2 OFFSET $3
 `
 
 type ListAccountsParams struct {
-	Limit  int32 `db:"limit"`
-	Offset int32 `db:"offset"`
+	Owner  string `db:"owner"`
+	Limit  int32  `db:"limit"`
+	Offset int32  `db:"offset"`
 }
 
 func (q *Queries) ListAccounts(ctx context.Context, arg ListAccountsParams) ([]Account, error) {
-	rows, err := q.db.Query(ctx, listAccounts, arg.Limit, arg.Offset)
+	rows, err := q.db.Query(ctx, listAccounts, arg.Owner, arg.Limit, arg.Offset)
 	if err != nil {
 		return nil, err
 	}
