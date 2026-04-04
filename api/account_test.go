@@ -39,7 +39,7 @@ func TestSample(t *testing.T) {
 		Return(account, nil)                             // 当这个函数被调用时，mock数据库会按设置好的方式返回account和nil错误
 
 	// 创建一个新的服务器实例，传入mock store
-	server := NewServer(store)
+	server := NewTestServer(t, store)
 	// 但是我们不需要真正启动服务器，所以我们直接创建一个HTTP请求来测试getAccount处理函数
 	url := fmt.Sprintf("/accounts/%d", account.ID)
 	request := httptest.NewRequest(http.MethodGet, url, nil)
@@ -130,7 +130,7 @@ func TestGetAccountAPI(t *testing.T) {
 			store := mockdb.NewMockStore(ctrl)
 			tc.buildStubs(store)
 
-			server := NewServer(store)
+			server := NewTestServer(t, store)
 			url := fmt.Sprintf("/accounts/%d", tc.accountID)
 			request := httptest.NewRequest(http.MethodGet, url, nil)
 			recorder := httptest.NewRecorder()
@@ -219,7 +219,7 @@ func TestCreateAccountAPI(t *testing.T) {
 			store := mockdb.NewMockStore(ctrl)
 			tc.buildStubs(store)
 
-			server := NewServer(store)
+			server := NewTestServer(t, store)
 			body, err := sonic.Marshal(tc.body)
 			require.NoError(t, err)
 
@@ -307,7 +307,7 @@ func TestListAccountsAPI(t *testing.T) {
 			store := mockdb.NewMockStore(ctrl)
 			tc.buildStubs(store)
 
-			server := NewServer(store)
+			server := NewTestServer(t, store)
 			url := fmt.Sprintf("/accounts?%s", tc.query)
 			request := httptest.NewRequest(http.MethodGet, url, nil)
 			recorder := httptest.NewRecorder()
@@ -371,7 +371,7 @@ func TestDeleteAccountAPI(t *testing.T) {
 			store := mockdb.NewMockStore(ctrl)
 			tc.buildStubs(store)
 
-			server := NewServer(store)
+			server := NewTestServer(t, store)
 			url := fmt.Sprintf("/accounts/%d", tc.accountID)
 			request := httptest.NewRequest(http.MethodDelete, url, nil)
 			recorder := httptest.NewRecorder()

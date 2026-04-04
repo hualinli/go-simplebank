@@ -142,7 +142,7 @@ func TestCreateUserAPI(t *testing.T) {
 			store := mockdb.NewMockStore(ctrl)
 			tc.buildStubs(store)
 
-			server := NewServer(store)
+			server := NewTestServer(t, store)
 
 			body, err := sonic.Marshal(tc.body)
 			require.NoError(t, err)
@@ -218,7 +218,7 @@ func TestGetUserAPI(t *testing.T) {
 			store := mockdb.NewMockStore(ctrl)
 			tc.buildStubs(store)
 
-			server := NewServer(store)
+			server := NewTestServer(t, store)
 
 			url := fmt.Sprintf("/users/%s", tc.username)
 			request := httptest.NewRequest(http.MethodGet, url, nil)
@@ -260,7 +260,7 @@ func TestDeleteUserAPI(t *testing.T) {
 			store := mockdb.NewMockStore(ctrl)
 			tc.buildStubs(store)
 
-			server := NewServer(store)
+			server := NewTestServer(t, store)
 
 			url := fmt.Sprintf("/users/%s", tc.username)
 			request := httptest.NewRequest(http.MethodDelete, url, nil)
@@ -377,7 +377,7 @@ func TestUpdateUserAPI(t *testing.T) {
 			store := mockdb.NewMockStore(ctrl)
 			tc.buildStubs(store)
 
-			server := NewServer(store)
+			server := NewTestServer(t, store)
 
 			body, err := sonic.Marshal(tc.body)
 			require.NoError(t, err)

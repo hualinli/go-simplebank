@@ -1,12 +1,16 @@
 package utils
 
 import (
+	"time"
+
 	"github.com/spf13/viper"
 )
 
 type Config struct {
-	DBSource      string `mapstructure:"DB_SOURCE"`
-	ServerAddress string `mapstructure:"SERVER_ADDRESS"`
+	DBSource            string        `mapstructure:"DB_SOURCE"`
+	ServerAddress       string        `mapstructure:"SERVER_ADDRESS"`
+	TokenSymmetricKey   string        `mapstructure:"TOKEN_SYMMETRIC_KEY"`
+	AccessTokenDuration time.Duration `mapstructure:"ACCESS_TOKEN_DURATION"`
 }
 
 func LoadConfig(path string) (Config, error) {
@@ -18,6 +22,8 @@ func LoadConfig(path string) (Config, error) {
 
 	v.BindEnv("DB_SOURCE")
 	v.BindEnv("SERVER_ADDRESS")
+	v.BindEnv("TOKEN_SYMMETRIC_KEY")
+	v.BindEnv("ACCESS_TOKEN_DURATION")
 
 	err := v.ReadInConfig()
 	if err != nil {
