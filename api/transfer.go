@@ -29,7 +29,7 @@ func (server *Server) createTransfer(ctx *gin.Context) {
 		ctx.JSON(http.StatusBadRequest, errResponse(err))
 		return
 	}
-	authorizationPayload := ctx.MustGet(authorizationHeaderKey).(*token.Payload)
+	authorizationPayload := ctx.MustGet(authorizationPayloadKey).(*token.Payload)
 	username := authorizationPayload.Username
 	if req.FromAccountID == req.ToAccountID {
 		err := fmt.Errorf("from and to account cannot be the same") // TODO: define a custom error type for this case and check with errors.Is() in the test
@@ -98,7 +98,7 @@ func (server *Server) getTransfer(ctx *gin.Context) {
 		ctx.JSON(http.StatusBadRequest, errResponse(err))
 		return
 	}
-	authorizationPayload := ctx.MustGet(authorizationHeaderKey).(*token.Payload)
+	authorizationPayload := ctx.MustGet(authorizationPayloadKey).(*token.Payload)
 	username := authorizationPayload.Username
 	account, err := server.store.GetAccount(ctx, req.AccountID)
 	if err != nil {
@@ -152,7 +152,7 @@ func (server *Server) listTransfers(ctx *gin.Context) {
 		ctx.JSON(http.StatusBadRequest, errResponse(err))
 		return
 	}
-	authorizationPayload := ctx.MustGet(authorizationHeaderKey).(*token.Payload)
+	authorizationPayload := ctx.MustGet(authorizationPayloadKey).(*token.Payload)
 	username := authorizationPayload.Username
 	account, err := server.store.GetAccount(ctx, reqUri.AccountID)
 	if err != nil {
