@@ -69,8 +69,10 @@ func (server *Server) setupRouter() {
 	}
 	t := router.Group("/transfers").Use(authMiddleware(server.tokenMaker))
 	{
-		t.POST("/", server.createTransfer)
-		// TODO: add more APIs for transfer
+		t.POST("", server.createTransfer)
+		t.GET("/:account/:id", server.getTransfer)
+		// t.GET("/:account", server.listTransfers) list transfer api not implemented yet.
+		// TODO: add more APIs for transfer. such as list transfer by from account or to account, delete transfer, etc.
 	}
 
 	server.router = router
