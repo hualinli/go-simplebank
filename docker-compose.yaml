@@ -7,7 +7,7 @@ services:
       - POSTGRES_PASSWORD=mypassword
       - POSTGRES_DB=simple_bank
     ports:
-      - "5432:5432"
+      - "5432:5432" # actually not needed exposing to host, because api and migration will connect to it via docker network
     healthcheck:
       test: [ "CMD-SHELL", "pg_isready -U myuser -d simple_bank" ]
       interval: 10s
