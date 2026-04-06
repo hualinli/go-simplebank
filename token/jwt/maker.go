@@ -11,6 +11,7 @@ import (
 
 const (
 	MinSecretKeySize = 32
+	TokenLeeway      = 30 * time.Second
 )
 
 type JWTMaker struct {
@@ -30,11 +31,12 @@ func NewJWTMaker(secretKey string) (token.Maker, error) {
 }
 
 func (maker *JWTMaker) CreateToken(username string, duration time.Duration) (string, *token.Payload, error) {
+	now := time.Now().UTC()
 	payload := &token.Payload{
 		TokenID:   uuid.NewString(),
 		Username:  username,
-		IssuedAt:  time.Now(),
-		ExpiredAt: time.Now().Add(duration),
+		IssuedAt:  now,
+		ExpiredAt: now.Add(duration),
 	}
 	claims := &Claims{
 		Username: username,
@@ -61,7 +63,7 @@ func (maker *JWTMaker) VerifyToken(tokenString string) (*token.Payload, error) {
 			return nil, token.ErrInvalidToken
 		}
 		return []byte(maker.secretKey), nil
-	})
+	}, jwt.WithLeeway(TokenLeeway))
 	if err != nil {
 		if errors.Is(err, jwt.ErrTokenExpired) {
 			return nil, token.ErrExpiredToken
@@ -76,8 +78,8 @@ func (maker *JWTMaker) VerifyToken(tokenString string) (*token.Payload, error) {
 	payload := &token.Payload{
 		TokenID:   claims.ID,
 		Username:  claims.Username,
-		IssuedAt:  claims.IssuedAt.Time,
-		ExpiredAt: claims.ExpiresAt.Time,
+		IssuedAt:  claims.IssuedAt.Time.UTC(),
+		ExpiredAt: claims.ExpiresAt.Time.UTC(),
 	}
 	return payload, nil
 }

@@ -11,3 +11,20 @@ sql:
         emit_db_tags: true
         emit_empty_slices: true
         emit_interface: true
+        overrides:
+          - column: "sessions.session_id"
+            go_type:
+              import: "github.com/google/uuid"
+              type: "UUID"
+          - column: "sessions.expires_at"
+            go_type:
+              import: "time"
+              type: "Time"
+          - column: "sessions.created_at"
+            go_type:
+              import: "time"
+              type: "Time"
+          - column: "sessions.updated_at"
+            go_type:
+              import: "time"
+              type: "Time"

@@ -5,6 +5,9 @@
 package db
 
 import (
+	"time"
+
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
@@ -21,6 +24,19 @@ type Entry struct {
 	AccountID int64              `db:"account_id"`
 	Amount    int64              `db:"amount"`
 	CreatedAt pgtype.Timestamptz `db:"created_at"`
+}
+
+type Session struct {
+	ID           int64     `db:"id"`
+	SessionID    uuid.UUID `db:"session_id"`
+	Username     string    `db:"username"`
+	RefreshToken string    `db:"refresh_token"`
+	UserAgent    string    `db:"user_agent"`
+	ClientIp     string    `db:"client_ip"`
+	IsBlocked    bool      `db:"is_blocked"`
+	ExpiresAt    time.Time `db:"expires_at"`
+	CreatedAt    time.Time `db:"created_at"`
+	UpdatedAt    time.Time `db:"updated_at"`
 }
 
 type Transfer struct {
