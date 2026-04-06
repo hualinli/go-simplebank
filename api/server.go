@@ -48,6 +48,7 @@ func (server *Server) setupRouter() {
 	{
 		u.POST("", server.createUser)
 		u.POST("/login", server.loginUser)
+		u.POST("/refresh", server.refreshToken)
 
 		authUsers := u.Use(authMiddleware(server.tokenMaker))
 		authUsers.GET("/:username", server.getUser)
