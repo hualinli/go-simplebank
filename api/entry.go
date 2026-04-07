@@ -27,7 +27,7 @@ type getEntryResponse struct {
 func (server *Server) getEntry(ctx *gin.Context) {
 	var req getEntryRequest
 	if err := ctx.ShouldBindUri(&req); err != nil {
-		ctx.JSON(http.StatusBadRequest, errResponse(err))
+		ctx.JSON(http.StatusBadRequest, errResponse(ErrInvalidRequest)) // 请求参数错误，返回400 Bad Request
 		return
 	}
 	authorizationPayload := ctx.MustGet(authorizationPayloadKey).(*token.Payload)
@@ -35,24 +35,24 @@ func (server *Server) getEntry(ctx *gin.Context) {
 	account, err := server.store.GetAccount(ctx, req.AccountID)
 	if err != nil {
 		if db.IsNotFoundError(err) {
-			ctx.JSON(http.StatusNotFound, errResponse(ErrAccountNotFound))
+			ctx.JSON(http.StatusNotFound, errResponse(ErrAccountNotFound)) // 账户不存在，返回404 Not Found
 			return
 		}
-		ctx.JSON(http.StatusInternalServerError, errResponse(err))
+		ctx.JSON(http.StatusInternalServerError, errResponse(ErrInternalError)) // 其他错误，返回500 Internal Server Error
 		return
 	}
 	if account.Owner != username {
-		ctx.JSON(http.StatusForbidden, errResponse(ErrAccountNotMatch))
+		ctx.JSON(http.StatusForbidden, errResponse(ErrAccountNotMatch)) // 账户不属于认证用户，返回403 Forbidden
 		return
 	}
 
 	entry, err := server.store.GetEntry(ctx, req.ID)
 	if err != nil {
 		if db.IsNotFoundError(err) {
-			ctx.JSON(http.StatusNotFound, errResponse(ErrEntryNotFound))
+			ctx.JSON(http.StatusNotFound, errResponse(ErrEntryNotFound)) // 条目不存在，返回404 Not Found
 			return
 		}
-		ctx.JSON(http.StatusInternalServerError, errResponse(err))
+		ctx.JSON(http.StatusInternalServerError, errResponse(ErrInternalError)) // 其他错误，返回500 Internal Server Error
 		return
 	}
 
@@ -79,7 +79,7 @@ type listEntriesResponse struct {
 func (server *Server) listEntries(ctx *gin.Context) {
 	var reqUri listEntriesRequestUri
 	if err := ctx.ShouldBindUri(&reqUri); err != nil {
-		ctx.JSON(http.StatusBadRequest, errResponse(err))
+		ctx.JSON(http.StatusBadRequest, errResponse(ErrInvalidRequest)) // 请求参数错误，返回400 Bad Request
 		return
 	}
 	authorizationPayload := ctx.MustGet(authorizationPayloadKey).(*token.Payload)
@@ -87,30 +87,31 @@ func (server *Server) listEntries(ctx *gin.Context) {
 	account, err := server.store.GetAccount(ctx, reqUri.AccountID)
 	if err != nil {
 		if db.IsNotFoundError(err) {
-			ctx.JSON(http.StatusNotFound, errResponse(ErrAccountNotFound))
+			ctx.JSON(http.StatusNotFound, errResponse(ErrAccountNotFound)) // 账户不存在，返回404 Not Found
 			return
 		}
-		ctx.JSON(http.StatusInternalServerError, errResponse(err))
+		ctx.JSON(http.StatusInternalServerError, errResponse(ErrInternalError)) // 其他错误，返回500 Internal Server Error
 		return
 	}
 	if account.Owner != username {
-		ctx.JSON(http.StatusForbidden, errResponse(ErrAccountNotMatch))
+		ctx.JSON(http.StatusForbidden, errResponse(ErrAccountNotMatch)) // 账户不属于认证用户，返回403 Forbidden
 		return
 	}
 	var req listEntriesRequest
 	if err := ctx.ShouldBindQuery(&req); err != nil {
-		ctx.JSON(http.StatusBadRequest, errResponse(err))
+		ctx.JSON(http.StatusBadRequest, errResponse(ErrInvalidRequest)) // 请求参数错误，返回400 Bad Request
 		return
 	}
 
 	arg := db.ListEntriesParams{
-		Limit:  req.PageSize,
-		Offset: (req.PageID - 1) * req.PageSize,
+		AccountID: account.ID,
+		Limit:     req.PageSize,
+		Offset:    (req.PageID - 1) * req.PageSize,
 	}
 
 	entries, err := server.store.ListEntries(ctx, arg)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, errResponse(err))
+		ctx.JSON(http.StatusInternalServerError, errResponse(ErrInternalError)) // 其他错误，返回500 Internal Server Error
 		return
 	}
 
