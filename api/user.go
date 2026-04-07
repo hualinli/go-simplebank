@@ -12,15 +12,6 @@ import (
 	"github.com/hualinli/go-simplebank/utils"
 )
 
-var (
-	ErrUserAlreadyExists  = fmt.Errorf("username already exists")
-	ErrEmailAlreadyExists = fmt.Errorf("email already exists")
-	ErrUserNotFound       = fmt.Errorf("user not found")
-	ErrInvalidPassword    = fmt.Errorf("invalid password")
-	ErrInternalError      = fmt.Errorf("internal error")
-	ErrUnknownError       = fmt.Errorf("unknown error")
-)
-
 type createUserRequest struct {
 	Username string `json:"username" binding:"required,alphanum"`
 	Password string `json:"password" binding:"required,min=6"`

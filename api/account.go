@@ -9,9 +9,6 @@ import (
 	"github.com/hualinli/go-simplebank/token"
 
 )
-var (
-	ErrAccountNotFound = fmt.Errorf("account not found")
-)
 
 type createAccountRequest struct {
 	Currency string `json:"currency" binding:"required,currency"`

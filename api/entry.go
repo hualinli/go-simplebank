@@ -10,7 +10,6 @@ import (
 )
 
 var (
-	ErrAccountNotMatch = errors.New("account doesn't belong to the authenticated user")
 	ErrEntryNotFound   = errors.New("entry not found")
 )
 
