@@ -29,13 +29,13 @@ type userResponse struct {
 func (server *Server) createUser(ctx *gin.Context) {
 	var req createUserRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusBadRequest, errResponse(err))
+		ctx.JSON(http.StatusBadRequest, errResponse(ErrInvalidRequest))
 		return
 	}
 
 	hashedPassword, err := utils.HashPassword(req.Password)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, errResponse(err))
+		ctx.JSON(http.StatusInternalServerError, errResponse(ErrInternalError))
 		return
 	}
 
@@ -48,7 +48,7 @@ func (server *Server) createUser(ctx *gin.Context) {
 	user, err := server.store.CreateUser(ctx, arg)
 	if err != nil {
 		if db.IsUniqueViolationError(err) {
-			ctx.JSON(http.StatusForbidden, errResponse(ErrUserAlreadyExists))
+			ctx.JSON(http.StatusConflict, errResponse(ErrUserOrEmailAlreadyExists))
 		} else if db.IsInternalError(err) {
 			ctx.JSON(http.StatusInternalServerError, errResponse(ErrInternalError))
 		} else {
@@ -74,12 +74,12 @@ type getUserResponse struct {
 func (server *Server) getUser(ctx *gin.Context) {
 	var req getUserResponse
 	if err := ctx.ShouldBindUri(&req); err != nil {
-		ctx.JSON(http.StatusBadRequest, errResponse(err))
+		ctx.JSON(http.StatusBadRequest, errResponse(ErrInvalidRequest))
 		return
 	}
 	authorizationPayload := ctx.MustGet(authorizationPayloadKey).(*token.Payload)
 	if authorizationPayload.Username != req.Username {
-		ctx.JSON(http.StatusForbidden, errResponse(fmt.Errorf("cannot get other user's info")))
+		ctx.JSON(http.StatusForbidden, errResponse(ErrUserNotMatch))
 		return
 	}
 	user, err := server.store.GetUser(ctx, req.Username)
@@ -131,7 +131,7 @@ func (server *Server) updateUser(ctx *gin.Context) {
 		} else if db.IsInternalError(err) {
 			ctx.JSON(http.StatusInternalServerError, errResponse(ErrInternalError))
 		} else if db.IsUniqueViolationError(err) {
-			ctx.JSON(http.StatusForbidden, errResponse(ErrEmailAlreadyExists))
+			ctx.JSON(http.StatusConflict, errResponse(ErrUserOrEmailAlreadyExists))
 		} else {
 			ctx.JSON(http.StatusInternalServerError, errResponse(ErrUnknownError))
 		}
@@ -153,10 +153,72 @@ type updateUserPasswordRequest struct {
 	NewPassword string `json:"new_password" binding:"required,min=6"`
 }
 
+type updateUserPasswordResponse struct {
+	Username string    `json:"username"`
+	ChangeAt time.Time `json:"change_at"`
+}
+
 func (server *Server) updateUserPassword(ctx *gin.Context) {
-	//TODO
-	var _ updateUserPasswordRequest
-	ctx.JSON(http.StatusNotImplemented, errResponse(fmt.Errorf("not implemented")))
+	var req updateUserPasswordRequest
+	if err := ctx.ShouldBindJSON(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, errResponse(ErrInvalidRequest))
+		return
+	}
+	authorizationPayload := ctx.MustGet(authorizationPayloadKey).(*token.Payload)
+	username := authorizationPayload.Username
+
+	user, err := server.store.GetUser(ctx, username)
+	if err != nil {
+		if db.IsNotFoundError(err) {
+			ctx.JSON(http.StatusNotFound, errResponse(ErrUserNotFound))
+		} else if db.IsInternalError(err) {
+			ctx.JSON(http.StatusInternalServerError, errResponse(ErrInternalError))
+		} else {
+			ctx.JSON(http.StatusInternalServerError, errResponse(ErrUnknownError))
+		}
+		return
+	}
+
+	err = utils.CheckPassword(req.OldPassword, user.HashedPassword)
+	if err != nil {
+		ctx.JSON(http.StatusUnauthorized, errResponse(ErrInvalidPassword))
+		return
+	}
+
+	hashedPassword, err := utils.HashPassword(req.NewPassword)
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, errResponse(ErrInternalError))
+		return
+	}
+
+	arg := db.UpdateUserPasswordParams{
+		Username:       username,
+		HashedPassword: hashedPassword,
+	}
+
+	user, err = server.store.UpdateUserPassword(ctx, arg)
+	if err != nil {
+		if db.IsNotFoundError(err) {
+			ctx.JSON(http.StatusNotFound, errResponse(ErrUserNotFound))
+		} else if db.IsInternalError(err) {
+			ctx.JSON(http.StatusInternalServerError, errResponse(ErrInternalError))
+		} else {
+			ctx.JSON(http.StatusInternalServerError, errResponse(ErrUnknownError))
+		}
+		return
+	}
+	changeAt := user.PasswordChangedAt.Time
+	//由于不希望在unit test里依赖pgtype，所以在db层的UpdateUserPassword方法
+	//里不再更新PasswordChangedAt字段，而是直接在这里根据当前时间来设置changeAt变量的值
+	if changeAt.IsZero() {
+		changeAt = time.Now()
+	}
+
+	rsp := updateUserPasswordResponse{
+		Username: user.Username,
+		ChangeAt: changeAt,
+	}
+	ctx.JSON(http.StatusOK, rsp)
 }
 
 type loginUserRequest struct {
