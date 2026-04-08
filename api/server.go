@@ -48,7 +48,7 @@ func (server *Server) setupRouter() {
 	{
 		u.POST("", server.createUser)
 		u.POST("/login", server.loginUser)
-		u.POST("/refresh", server.refreshToken)
+		u.POST("/refresh", server.refreshToken) // 由于缺乏auth的路由，所以refresh暂时挂在users路由下，后续可以考虑单独挂在一个auth路由下。
 
 		authUsers := u.Use(authMiddleware(server.tokenMaker))
 		authUsers.GET("/:username", server.getUser)
