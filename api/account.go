@@ -1,13 +1,11 @@
 package api
 
 import (
-	"fmt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 	db "github.com/hualinli/go-simplebank/db/sqlc"
 	"github.com/hualinli/go-simplebank/token"
-
 )
 
 type createAccountRequest struct {
@@ -24,7 +22,7 @@ type createAccountResponse struct {
 func (server *Server) createAccount(ctx *gin.Context) {
 	var req createAccountRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusBadRequest, errResponse(err))
+		ctx.JSON(http.StatusBadRequest, errResponse(ErrInvalidRequest))
 		return
 	}
 	authorizationPayload := ctx.MustGet(authorizationPayloadKey).(*token.Payload)
@@ -36,8 +34,13 @@ func (server *Server) createAccount(ctx *gin.Context) {
 	}
 	account, err := server.store.CreateAccount(ctx, arg)
 	if err != nil {
-		// TODO: 测试创建相同币种账户时的报错，并包装错误
-		ctx.JSON(http.StatusInternalServerError, errResponse(err))
+		if db.IsUniqueViolationError(err) {
+			ctx.JSON(http.StatusConflict, errResponse(ErrAccountAlreadyExists))
+		} else if db.IsInternalError(err) {
+			ctx.JSON(http.StatusInternalServerError, errResponse(ErrInternalError))
+		} else {
+			ctx.JSON(http.StatusInternalServerError, errResponse(ErrUnknownError))
+		} // owner不存在？似乎不太可能，因为owner是从token里解析出来的
 		return
 	}
 	res := createAccountResponse{
@@ -63,7 +66,7 @@ type getAccountResponse struct {
 func (server *Server) getAccount(ctx *gin.Context) {
 	var req getAccountRequest
 	if err := ctx.ShouldBindUri(&req); err != nil {
-		ctx.JSON(http.StatusBadRequest, errResponse(err))
+		ctx.JSON(http.StatusBadRequest, errResponse(ErrInvalidRequest))
 		return
 	}
 
@@ -75,12 +78,15 @@ func (server *Server) getAccount(ctx *gin.Context) {
 	if err != nil {
 		if db.IsNotFoundError(err) {
 			ctx.JSON(http.StatusNotFound, errResponse(ErrAccountNotFound))
+		} else if db.IsInternalError(err) {
+			ctx.JSON(http.StatusInternalServerError, errResponse(ErrInternalError))
+		} else {
+			ctx.JSON(http.StatusInternalServerError, errResponse(ErrUnknownError))
 		}
-		ctx.JSON(http.StatusInternalServerError, errResponse(err))
 		return
 	}
 	if account.Owner != owner {
-		ctx.JSON(http.StatusForbidden, errResponse(fmt.Errorf("account does not belong to the authenticated user")))
+		ctx.JSON(http.StatusForbidden, errResponse(ErrAccountForbidden))
 		return
 	}
 	rsp := getAccountResponse{
@@ -116,7 +122,7 @@ func (server *Server) listAccounts(ctx *gin.Context) {
 	}
 	accounts, err := server.store.ListAccounts(ctx, arg)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, errResponse(err))
+		ctx.JSON(http.StatusInternalServerError, errResponse(ErrInternalError))
 		return
 	}
 	rsp := listAccountsResponse{}
@@ -148,9 +154,18 @@ func (server *Server) deleteAccount(ctx *gin.Context) {
 		Owner: owner,
 	}
 	account, err := server.store.DeleteAccount(ctx, arg)
+	// 由于同时对id和owner进行查询，所以无论是账户不存在还是账户不属于用户，都会返回ErrAccountNotFound错误，因此不需要单独处理账户不属于用户的情况
 	if err != nil {
-		// TODO: 测试删除不存在的账户时的报错，并包装错误
-		ctx.JSON(http.StatusInternalServerError, errResponse(err))
+		if db.IsNotFoundError(err) {
+			ctx.JSON(http.StatusNotFound, errResponse(ErrAccountNotFound))
+		} else if db.IsInternalError(err) {
+			ctx.JSON(http.StatusInternalServerError, errResponse(ErrInternalError))
+		} else if db.IsForeignKeyViolationError(err) {
+			ctx.JSON(http.StatusConflict, errResponse(ErrAccountCannotBeDeleted))
+			// 账户被transfer或entry引用了，无法删除
+		} else {
+			ctx.JSON(http.StatusInternalServerError, errResponse(ErrUnknownError))
+		}
 		return
 	}
 	ctx.JSON(http.StatusOK, gin.H{"message": "account deleted", "account": account}) // TODO: 响应内容待统一

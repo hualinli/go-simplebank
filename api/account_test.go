@@ -74,6 +74,17 @@ func TestSample(t *testing.T) {
 	require.Equal(t, account.Balance, gotAccount.Balance)
 }
 
+func randomAccount(owner string, currency string) db.Account {
+	if currency == "" {
+		currency = utils.RandomCurrency()
+	}
+	return db.Account{
+		Owner:    owner,
+		Currency: currency,
+		Balance:  utils.RandomInt(0, 1000),
+	}
+}
+
 func TestGetAccountAPI(t *testing.T) {
 	// 这个测试函数的结构和TestSample类似，但它使用表驱动实现全覆盖
 	user, _ := randomUser(t)
@@ -153,7 +164,29 @@ func TestGetAccountAPI(t *testing.T) {
 				store.EXPECT().
 					GetAccount(gomock.Any(), gomock.Eq(int64(1))).
 					Times(1).
-					Return(db.Account{}, fmt.Errorf("db error"))
+					Return(db.Account{}, db.ErrInternalError)
+			},
+			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
+				require.Equal(t, http.StatusInternalServerError, recorder.Code)
+			},
+		},
+		{
+			name:      "unknownError",
+			accountID: 1,
+			setupAuth: func(t *testing.T, request *http.Request, tokenMaker token.Maker) {
+				username := user.Username
+				duration := time.Minute
+				token, _, err := tokenMaker.CreateToken(username, duration)
+				require.NoError(t, err)
+
+				authorizationHeader := fmt.Sprintf("Bearer %s", token)
+				request.Header.Set(authorizationHeaderKey, authorizationHeader)
+			},
+			buildStubs: func(store *mockdb.MockStore) {
+				store.EXPECT().
+					GetAccount(gomock.Any(), gomock.Eq(int64(1))).
+					Times(1).
+					Return(db.Account{}, fmt.Errorf("unknown error"))
 			},
 			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusInternalServerError, recorder.Code)
@@ -175,23 +208,10 @@ func TestGetAccountAPI(t *testing.T) {
 				store.EXPECT().
 					GetAccount(gomock.Any(), gomock.Eq(int64(1))).
 					Times(1).
-					Return(db.Account{}, fmt.Errorf("notfound"))
+					Return(db.Account{}, db.ErrRecordNotFound)
 			},
 			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
-				require.Equal(t, http.StatusInternalServerError, recorder.Code) // 因为还没有做测试的错误包装，所以目前会返回500错误，后续可以改成404错误
-			},
-		},
-		{
-			name:      "Unauthorized",
-			accountID: 1,
-			setupAuth: func(t *testing.T, request *http.Request, tokenMaker token.Maker) {
-				// 不设置认证头，模拟未授权访问
-			},
-			buildStubs: func(store *mockdb.MockStore) {
-				// 这个测试不需要设置任何期望，因为请求无效，处理函数会在调用数据库之前就返回错误
-			},
-			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
-				require.Equal(t, http.StatusUnauthorized, recorder.Code)
+				require.Equal(t, http.StatusNotFound, recorder.Code)
 			},
 		},
 		{
@@ -333,7 +353,7 @@ func TestCreateAccountAPI(t *testing.T) {
 						Currency: "USD",
 					})).
 					Times(1).
-					Return(db.Account{}, fmt.Errorf("db error"))
+					Return(db.Account{}, db.ErrInternalError) // 模拟数据库内部错误
 			},
 			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusInternalServerError, recorder.Code)
@@ -360,25 +380,37 @@ func TestCreateAccountAPI(t *testing.T) {
 						Currency: "USD",
 					})).
 					Times(1).
-					Return(db.Account{}, fmt.Errorf("duplicate account"))
+					Return(db.Account{}, db.ErrUniqueViolation)
 			},
 			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
-				require.Equal(t, http.StatusInternalServerError, recorder.Code) // 因为还没有做测试的错误包装，所以目前会返回500错误，后续可以改成400错误
+				require.Equal(t, http.StatusConflict, recorder.Code)
 			},
 		},
 		{
-			name: "Unauthorized",
+			name: "unknownError",
 			setupAuth: func(t *testing.T, request *http.Request, tokenMaker token.Maker) {
-				// 不设置认证头，模拟未授权访问
+				username := user.Username
+				duration := time.Minute
+				token, _, err := tokenMaker.CreateToken(username, duration)
+				require.NoError(t, err)
+
+				authorizationHeader := fmt.Sprintf("Bearer %s", token)
+				request.Header.Set(authorizationHeaderKey, authorizationHeader)
 			},
 			body: gin.H{
 				"currency": "USD",
 			},
 			buildStubs: func(store *mockdb.MockStore) {
-				// 这个测试不需要设置任何期望，因为请求无效，处理函数会在调用数据库之前就返回错误
+				store.EXPECT().
+					CreateAccount(gomock.Any(), gomock.Eq(db.CreateAccountParams{
+						Owner:    user.Username,
+						Currency: "USD",
+					})).
+					Times(1).
+					Return(db.Account{}, fmt.Errorf("unknown error"))
 			},
 			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
-				require.Equal(t, http.StatusUnauthorized, recorder.Code)
+				require.Equal(t, http.StatusInternalServerError, recorder.Code)
 			},
 		},
 	}
@@ -593,10 +625,35 @@ func TestDeleteAccountAPI(t *testing.T) {
 						Owner: user.Username,
 					})).
 					Times(1).
-					Return(db.Account{}, fmt.Errorf("db error"))
+					Return(db.Account{}, db.ErrInternalError)
 			},
 			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
 				require.Equal(t, http.StatusInternalServerError, recorder.Code)
+			},
+		},
+		{
+			name: "account not blong to user",
+			setupAuth: func(t *testing.T, request *http.Request, tokenMaker token.Maker) {
+				username := user.Username
+				duration := time.Minute
+				token, _, err := tokenMaker.CreateToken(username, duration)
+				require.NoError(t, err)
+
+				authorizationHeader := fmt.Sprintf("Bearer %s", token)
+				request.Header.Set(authorizationHeaderKey, authorizationHeader)
+			},
+			accountID: 1,
+			buildStubs: func(store *mockdb.MockStore) {
+				store.EXPECT().
+					DeleteAccount(gomock.Any(), gomock.Eq(db.DeleteAccountParams{
+						ID:    1,
+						Owner: user.Username,
+					})).
+					Times(1).
+					Return(db.Account{}, db.ErrRecordNotFound) // 模拟账户不存在或不属于用户的情况，DeleteAccount函数会返回ErrNotFound错误
+			},
+			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
+				require.Equal(t, http.StatusNotFound, recorder.Code)
 			},
 		},
 	}
