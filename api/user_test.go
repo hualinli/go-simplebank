@@ -702,6 +702,63 @@ func TestUpdatePasswordAPI(t *testing.T) {
 				require.Equal(t, http.StatusInternalServerError, recorder.Code)
 			},
 		},
+		{
+			name: "incorrect old password",
+			setupAuth: func(request *http.Request, tokenMaker token.Maker) {
+				username := user.Username
+				duration := time.Minute
+				token, _, err := tokenMaker.CreateToken(username, duration)
+				require.NoError(t, err)
+				authorizationHeader := fmt.Sprintf("Bearer %s", token)
+				request.Header.Set(authorizationHeaderKey, authorizationHeader)
+			},
+			username: user.Username,
+			body: gin.H{
+				"old_password": "wrong-old-password",
+				"new_password": newPassword,
+			},
+			buildStubs: func(store *mockdb.MockStore) {
+				store.EXPECT().
+					GetUser(gomock.Any(), gomock.Eq(user.Username)).
+					Times(1).
+					Return(user, nil)
+
+				store.EXPECT().
+					UpdateUserPassword(gomock.Any(), gomock.Any()).
+					Times(0)
+			},
+			checkResponse: func(recorder *httptest.ResponseRecorder) {
+				require.Equal(t, http.StatusUnauthorized, recorder.Code)
+			},
+		},
+		{
+			name: "same old and new password",
+			setupAuth: func(request *http.Request, tokenMaker token.Maker) {
+				username := user.Username
+				duration := time.Minute
+				token, _, err := tokenMaker.CreateToken(username, duration)
+				require.NoError(t, err)
+				authorizationHeader := fmt.Sprintf("Bearer %s", token)
+				request.Header.Set(authorizationHeaderKey, authorizationHeader)
+			},
+			username: user.Username,
+			body: gin.H{
+				"old_password": oldPassword,
+				"new_password": oldPassword,
+			},
+			buildStubs: func(store *mockdb.MockStore) {
+				store.EXPECT().
+					GetUser(gomock.Any(), gomock.Eq(user.Username)).
+					Times(0) // 走不到这里，因为在handler里会先检查新旧密码是否相同，如果相同就直接返回400了
+
+				store.EXPECT().
+					UpdateUserPassword(gomock.Any(), gomock.Any()).
+					Times(0)
+			},
+			checkResponse: func(recorder *httptest.ResponseRecorder) {
+				require.Equal(t, http.StatusBadRequest, recorder.Code)
+			},
+		},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {

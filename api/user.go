@@ -164,13 +164,17 @@ func (server *Server) updateUserPassword(ctx *gin.Context) {
 		ctx.JSON(http.StatusBadRequest, errResponse(ErrInvalidRequest))
 		return
 	}
+	if req.OldPassword == req.NewPassword {
+		ctx.JSON(http.StatusBadRequest, errResponse(ErrPasswordMustBeDifferent))
+		return
+	}
 	authorizationPayload := ctx.MustGet(authorizationPayloadKey).(*token.Payload)
 	username := authorizationPayload.Username
 
 	user, err := server.store.GetUser(ctx, username)
 	if err != nil {
 		if db.IsNotFoundError(err) {
-			ctx.JSON(http.StatusNotFound, errResponse(ErrUserNotFound))
+			ctx.JSON(http.StatusNotFound, errResponse(ErrUserNotFound)) // 不太可能会NotFound，因为用户已经登录了
 		} else if db.IsInternalError(err) {
 			ctx.JSON(http.StatusInternalServerError, errResponse(ErrInternalError))
 		} else {
@@ -178,7 +182,8 @@ func (server *Server) updateUserPassword(ctx *gin.Context) {
 		}
 		return
 	}
-
+	// 后续可以考虑在UpdateUserPassword的db层方法里直接检查旧密码是否正确，
+	// 如果不正确就返回一个特定的错误，这样就不需要在这里先查询用户再比对密码了，可以减少一次数据库查询
 	err = utils.CheckPassword(req.OldPassword, user.HashedPassword)
 	if err != nil {
 		ctx.JSON(http.StatusUnauthorized, errResponse(ErrInvalidPassword))
