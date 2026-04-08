@@ -72,7 +72,7 @@ func (server *Server) setupRouter() {
 	{
 		t.POST("", server.createTransfer)
 		t.GET("/:account/:id", server.getTransfer)
-		// t.GET("/:account", server.listTransfers) list transfer api not implemented yet.
+		t.GET("/:account", server.listTransfers)
 		// TODO: add more APIs for transfer. such as list transfer by from account or to account, delete transfer, etc.
 	}
 

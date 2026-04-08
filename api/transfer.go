@@ -153,24 +153,27 @@ type listTransfersResponse struct {
 func (server *Server) listTransfers(ctx *gin.Context) {
 	var reqUri listTransfersRequestUri
 	if err := ctx.ShouldBindUri(&reqUri); err != nil {
-		ctx.JSON(http.StatusBadRequest, errResponse(err))
+		ctx.JSON(http.StatusBadRequest, errResponse(ErrInvalidRequest))
 		return
 	}
 	var reqQuery listTransfersRequestQuery
 	if err := ctx.ShouldBindQuery(&reqQuery); err != nil {
-		ctx.JSON(http.StatusBadRequest, errResponse(err))
+		ctx.JSON(http.StatusBadRequest, errResponse(ErrInvalidRequest))
 		return
 	}
 	authorizationPayload := ctx.MustGet(authorizationPayloadKey).(*token.Payload)
 	username := authorizationPayload.Username
 	account, err := server.store.GetAccount(ctx, reqUri.AccountID)
 	if err != nil {
-		ctx.JSON(http.StatusNotFound, errResponse(err)) // TODO: distinguish between "not found" and other errors
+		if db.IsNotFoundError(err) {
+			ctx.JSON(http.StatusNotFound, errResponse(ErrAccountNotFound))
+		} else {
+			ctx.JSON(http.StatusInternalServerError, errResponse(ErrInternalError))
+		}
 		return
 	}
 	if account.Owner != username {
-		err := fmt.Errorf("account does not belong to the authenticated user")
-		ctx.JSON(http.StatusForbidden, errResponse(err))
+		ctx.JSON(http.StatusForbidden, errResponse(ErrAccountNotMatch))
 		return
 	}
 
@@ -181,7 +184,7 @@ func (server *Server) listTransfers(ctx *gin.Context) {
 	}
 	transfers, err := server.store.ListTransfers(ctx, arg)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, errResponse(err))
+		ctx.JSON(http.StatusInternalServerError, errResponse(ErrInternalError))
 		return
 	}
 

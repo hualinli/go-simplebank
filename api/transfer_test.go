@@ -438,3 +438,135 @@ func TestGetTransferAPI(t *testing.T) {
 	}
 }
 
+func TestListTransfersAPI(t *testing.T) {
+	user1, _ := randomUser(t)
+	account1 := db.Account{
+		ID:       2,
+		Owner:    user1.Username,
+		Currency: "USD",
+		Balance:  1000,
+	}
+	user2, _ := randomUser(t)
+	account2 := db.Account{
+		ID:       3,
+		Owner:    user2.Username,
+		Currency: "USD",
+		Balance:  1000,
+	}
+	transfers := []db.Transfer{
+		{
+			ID:            1,
+			FromAccountID: account1.ID,
+			ToAccountID:   account2.ID,
+			Amount:        100,
+		},
+		{
+			ID:            2,
+			FromAccountID: account1.ID,
+			ToAccountID:   account2.ID,
+			Amount:        200,
+		},
+		{
+			ID:            3,
+			FromAccountID: account2.ID,
+			ToAccountID:   account1.ID,
+			Amount:        300,
+		},
+	}
+	tests := []struct {
+		name          string
+		accountID     int64
+		pageID        int32
+		pageSize      int32
+		setupAuth     func(t *testing.T, request *http.Request, tokenMaker token.Maker)
+		buildStubs    func(store *mockdb.MockStore)
+		checkResponse func(t *testing.T, recorder *httptest.ResponseRecorder)
+	}{
+		{
+			name:      "OK",
+			accountID: account1.ID,
+			pageID:    1,
+			pageSize:  5,
+			setupAuth: func(t *testing.T, request *http.Request, tokenMaker token.Maker) {
+				username := user1.Username
+				duration := time.Minute
+				token, _, err := tokenMaker.CreateToken(username, duration)
+				require.NoError(t, err)
+				authorizationHeader := fmt.Sprintf("Bearer %s", token)
+				request.Header.Set("Authorization", authorizationHeader)
+			},
+			buildStubs: func(store *mockdb.MockStore) {
+				store.EXPECT().
+					GetAccount(gomock.Any(), gomock.Eq(account1.ID)).
+					Times(1).
+					Return(account1, nil)
+
+				store.EXPECT().
+					ListTransfers(gomock.Any(), gomock.Eq(db.ListTransfersParams{
+						FromAccountID: account1.ID,
+						Limit:         5,
+						Offset:        0,
+					})).
+					Times(1).
+					Return(transfers, nil)
+			},
+			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
+				require.Equal(t, http.StatusOK, recorder.Code)
+				var rsp listTransfersResponse
+				err := sonic.Unmarshal(recorder.Body.Bytes(), &rsp)
+				require.NoError(t, err)
+				require.Len(t, rsp.Transfers, 3)
+				require.Equal(t, transfers[0].ID, rsp.Transfers[0].ID)
+				require.Equal(t, transfers[1].ID, rsp.Transfers[1].ID)
+			},
+		},
+		{
+			name:      "forbidden - account no match",
+			accountID: account1.ID,
+			pageID:    1,
+			pageSize:  5,
+			setupAuth: func(t *testing.T, request *http.Request, tokenMaker token.Maker) {
+				username := user2.Username
+				duration := time.Minute
+				token, _, err := tokenMaker.CreateToken(username, duration)
+				require.NoError(t, err)
+				authorizationHeader := fmt.Sprintf("Bearer %s", token)
+				request.Header.Set("Authorization", authorizationHeader)
+			},
+			buildStubs: func(store *mockdb.MockStore) {
+				store.EXPECT().
+					GetAccount(gomock.Any(), gomock.Eq(account1.ID)).
+					Times(1).
+					Return(account1, nil)
+
+				store.EXPECT().
+					ListTransfers(gomock.Any(), gomock.Any()).
+					Times(0)
+			},
+			checkResponse: func(t *testing.T, recorder *httptest.ResponseRecorder) {
+				require.Equal(t, http.StatusForbidden, recorder.Code)
+			},
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
+
+			store := mockdb.NewMockStore(ctrl)
+			tc.buildStubs(store)
+
+			server := NewTestServer(t, store)
+
+			url := fmt.Sprintf("/transfers/%d?page_id=%d&page_size=%d", tc.accountID, tc.pageID, tc.pageSize)
+			request, err := http.NewRequest(http.MethodGet, url, nil)
+			require.NoError(t, err)
+
+			tc.setupAuth(t, request, server.tokenMaker)
+			recorder := httptest.NewRecorder()
+
+			server.router.ServeHTTP(recorder, request)
+			tc.checkResponse(t, recorder)
+		})
+	}
+}
