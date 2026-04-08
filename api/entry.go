@@ -82,6 +82,11 @@ func (server *Server) listEntries(ctx *gin.Context) {
 		ctx.JSON(http.StatusBadRequest, errResponse(ErrInvalidRequest)) // 请求参数错误，返回400 Bad Request
 		return
 	}
+	var req listEntriesRequest
+	if err := ctx.ShouldBindQuery(&req); err != nil {
+		ctx.JSON(http.StatusBadRequest, errResponse(ErrInvalidRequest)) // 请求参数错误，返回400 Bad Request
+		return
+	}
 	authorizationPayload := ctx.MustGet(authorizationPayloadKey).(*token.Payload)
 	username := authorizationPayload.Username
 	account, err := server.store.GetAccount(ctx, reqUri.AccountID)
@@ -95,11 +100,6 @@ func (server *Server) listEntries(ctx *gin.Context) {
 	}
 	if account.Owner != username {
 		ctx.JSON(http.StatusForbidden, errResponse(ErrAccountNotMatch)) // 账户不属于认证用户，返回403 Forbidden
-		return
-	}
-	var req listEntriesRequest
-	if err := ctx.ShouldBindQuery(&req); err != nil {
-		ctx.JSON(http.StatusBadRequest, errResponse(ErrInvalidRequest)) // 请求参数错误，返回400 Bad Request
 		return
 	}
 

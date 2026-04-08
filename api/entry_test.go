@@ -219,5 +219,156 @@ func TestGetEntryAPI(t *testing.T) {
 }
 
 func TestListEntriesAPI(t *testing.T) {
-	// TODO: add test cases for ListEntriesAPI
+	tests := []struct {
+		name          string
+		accountID     int64
+		pageID        int32
+		pageSize      int32
+		setupAuth     func(t *testing.T, request *http.Request, tokenMaker token.Maker)
+		buildStubs    func(store *mockdb.MockStore)
+		checkResponse func(recorder *httptest.ResponseRecorder)
+	}{
+		{
+			name:      "OK",
+			accountID: 1,
+			pageID:    1,
+			pageSize:  5,
+			setupAuth: func(t *testing.T, request *http.Request, tokenMaker token.Maker) {
+				username := "testuser"
+				duration := time.Minute
+				token, _, err := tokenMaker.CreateToken(username, duration)
+				require.NoError(t, err)
+
+				authorizationHeader := fmt.Sprintf("Bearer %s", token)
+				request.Header.Set(authorizationHeaderKey, authorizationHeader)
+			},
+			buildStubs: func(store *mockdb.MockStore) {
+				store.EXPECT().
+					GetAccount(gomock.Any(), gomock.Eq(int64(1))).
+					Times(1).
+					Return(db.Account{
+						ID:    1,
+						Owner: "testuser",
+					}, nil)
+
+				store.EXPECT().
+					ListEntries(gomock.Any(), gomock.Any()).
+					Times(1).
+					Return([]db.Entry{
+						{ID: 1, AccountID: 1, Amount: 100},
+						{ID: 2, AccountID: 1, Amount: -50},
+					}, nil)
+			},
+			checkResponse: func(recorder *httptest.ResponseRecorder) {
+				require.Equal(t, http.StatusOK, recorder.Code)
+			},
+		},
+		{
+			name:      "bad request - invalid query",
+			accountID: 1,
+			pageID:    0, // invalid page ID
+			pageSize:  5,
+			setupAuth: func(t *testing.T, request *http.Request, tokenMaker token.Maker) {
+				username := "testuser"
+				duration := time.Minute
+				token, _, err := tokenMaker.CreateToken(username, duration)
+				require.NoError(t, err)
+
+				authorizationHeader := fmt.Sprintf("Bearer %s", token)
+				request.Header.Set(authorizationHeaderKey, authorizationHeader)
+			},
+			buildStubs: func(store *mockdb.MockStore) {
+				store.EXPECT().
+					GetAccount(gomock.Any(), gomock.Any()).
+					Times(0)
+
+				store.EXPECT().
+					ListEntries(gomock.Any(), gomock.Any()).
+					Times(0)
+			},
+			checkResponse: func(recorder *httptest.ResponseRecorder) {
+				require.Equal(t, http.StatusBadRequest, recorder.Code)
+			},
+		},
+		{
+			name:      "account not found",
+			accountID: 1,
+			pageID:    1,
+			pageSize:  5,
+			setupAuth: func(t *testing.T, request *http.Request, tokenMaker token.Maker) {
+				username := "testuser"
+				duration := time.Minute
+				token, _, err := tokenMaker.CreateToken(username, duration)
+				require.NoError(t, err)
+
+				authorizationHeader := fmt.Sprintf("Bearer %s", token)
+				request.Header.Set(authorizationHeaderKey, authorizationHeader)
+			},
+			buildStubs: func(store *mockdb.MockStore) {
+				store.EXPECT().
+					GetAccount(gomock.Any(), gomock.Eq(int64(1))).
+					Times(1).
+					Return(db.Account{}, db.ErrRecordNotFound)
+
+				store.EXPECT().
+					ListEntries(gomock.Any(), gomock.Any()).
+					Times(0)
+			},
+			checkResponse: func(recorder *httptest.ResponseRecorder) {
+				require.Equal(t, http.StatusNotFound, recorder.Code)
+			},
+		},
+		{
+			name: "account not match",
+			accountID: 1,
+			pageID:    1,
+			pageSize:  5,
+			setupAuth: func(t *testing.T, request *http.Request, tokenMaker token.Maker) {
+				username := "testuser"
+				duration := time.Minute
+				token, _, err := tokenMaker.CreateToken(username, duration)
+				require.NoError(t, err)
+
+				authorizationHeader := fmt.Sprintf("Bearer %s", token)
+				request.Header.Set(authorizationHeaderKey, authorizationHeader)
+			},
+			buildStubs: func(store *mockdb.MockStore) {
+				store.EXPECT().
+					GetAccount(gomock.Any(), gomock.Eq(int64(1))).
+					Times(1).
+					Return(db.Account{
+						ID:    1,
+						Owner: "anotheruser",
+					}, nil)
+
+				store.EXPECT().
+					ListEntries(gomock.Any(), gomock.Any()).
+					Times(0)
+			},
+			checkResponse: func(recorder *httptest.ResponseRecorder) {
+				require.Equal(t, http.StatusForbidden, recorder.Code)
+			},
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			ctrl := gomock.NewController(t)
+			defer ctrl.Finish()
+
+			store := mockdb.NewMockStore(ctrl)
+			tc.buildStubs(store)
+
+			server := NewTestServer(t, store)
+
+			url := fmt.Sprintf("/entries/%d?page_id=%d&page_size=%d", tc.accountID, tc.pageID, tc.pageSize)
+			request, err := http.NewRequest(http.MethodGet, url, nil)
+			require.NoError(t, err)
+
+			tc.setupAuth(t, request, server.tokenMaker)
+			recorder := httptest.NewRecorder()
+
+			server.router.ServeHTTP(recorder, request)
+			tc.checkResponse(recorder)
+		})
+	}
 }
