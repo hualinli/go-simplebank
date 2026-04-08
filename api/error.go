@@ -35,3 +35,14 @@ var (
 	ErrAccountForbidden       = errors.New("account doesn't belong to the authenticated user")
 	ErrAccountCannotBeDeleted = errors.New("account cannot be deleted because it has non-zero balance or has associated entries")
 )
+
+// Transfer相关错误
+var (
+	ErrTransferSameAccount         = errors.New("from and to account cannot be the same")
+	ErrTransferFromAccountNotFound = errors.New("from account not found")
+	ErrTransferToAccountNotFound   = errors.New("to account not found")
+	ErrTransferFromAccountNotMatch = errors.New("from account doesn't belong to the authenticated user")
+	ErrTransferCurrencyMismatch    = errors.New("account currency mismatch")
+	ErrTransferNotFound            = errors.New("transfer not found")
+	ErrTransferNotMatch            = errors.New("transfer doesn't involve the specified account")
+)

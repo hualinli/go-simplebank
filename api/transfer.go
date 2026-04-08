@@ -1,7 +1,6 @@
 package api
 
 import (
-	"fmt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -26,40 +25,44 @@ type createTransferResponse struct {
 func (server *Server) createTransfer(ctx *gin.Context) {
 	var req createTransferRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusBadRequest, errResponse(err))
+		ctx.JSON(http.StatusBadRequest, errResponse(ErrInvalidRequest))
 		return
 	}
 	authorizationPayload := ctx.MustGet(authorizationPayloadKey).(*token.Payload)
 	username := authorizationPayload.Username
 	if req.FromAccountID == req.ToAccountID {
-		err := fmt.Errorf("from and to account cannot be the same") // TODO: define a custom error type for this case and check with errors.Is() in the test
-		ctx.JSON(http.StatusBadRequest, errResponse(err))
+		ctx.JSON(http.StatusBadRequest, errResponse(ErrTransferSameAccount))
 		return
 	}
 	fromAccount, err := server.store.GetAccount(ctx, req.FromAccountID)
 	if err != nil {
-		ctx.JSON(http.StatusNotFound, errResponse(err)) // TODO: distinguish between "not found" and other errors
+		if db.IsNotFoundError(err) {
+			ctx.JSON(http.StatusNotFound, errResponse(ErrTransferFromAccountNotFound))
+		} else {
+			ctx.JSON(http.StatusInternalServerError, errResponse(ErrInternalError))
+		}
 		return
 	}
 	if fromAccount.Owner != username {
-		err := fmt.Errorf("from account does not belong to the authenticated user")
-		ctx.JSON(http.StatusForbidden, errResponse(err))
+		ctx.JSON(http.StatusForbidden, errResponse(ErrTransferFromAccountNotMatch))
 		return
 	}
 	if fromAccount.Currency != req.Currency {
-		err := fmt.Errorf("from account currency mismatch: %s vs %s", fromAccount.Currency, req.Currency)
-		ctx.JSON(http.StatusBadRequest, errResponse(err))
+		ctx.JSON(http.StatusBadRequest, errResponse(ErrTransferCurrencyMismatch))
 		return
 	}
 
 	toAccount, err := server.store.GetAccount(ctx, req.ToAccountID)
 	if err != nil {
-		ctx.JSON(http.StatusNotFound, errResponse(err)) // TODO: distinguish between "not found" and other errors
+		if db.IsNotFoundError(err) {
+			ctx.JSON(http.StatusNotFound, errResponse(ErrTransferToAccountNotFound))
+		} else {
+			ctx.JSON(http.StatusInternalServerError, errResponse(ErrInternalError))
+		}
 		return
 	}
 	if toAccount.Currency != req.Currency {
-		err := fmt.Errorf("to account currency mismatch: %s vs %s", toAccount.Currency, req.Currency)
-		ctx.JSON(http.StatusBadRequest, errResponse(err))
+		ctx.JSON(http.StatusBadRequest, errResponse(ErrTransferCurrencyMismatch))
 		return
 	}
 	arg := db.TransferTxParams{
@@ -70,7 +73,7 @@ func (server *Server) createTransfer(ctx *gin.Context) {
 
 	result, err := server.store.TransferTx(ctx, arg)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, errResponse(err))
+		ctx.JSON(http.StatusInternalServerError, errResponse(ErrInternalError))
 		return
 	}
 
@@ -95,30 +98,36 @@ type getTransferResponse struct {
 func (server *Server) getTransfer(ctx *gin.Context) {
 	var req getTransferRequest
 	if err := ctx.ShouldBindUri(&req); err != nil {
-		ctx.JSON(http.StatusBadRequest, errResponse(err))
+		ctx.JSON(http.StatusBadRequest, errResponse(ErrInvalidRequest))
 		return
 	}
 	authorizationPayload := ctx.MustGet(authorizationPayloadKey).(*token.Payload)
 	username := authorizationPayload.Username
 	account, err := server.store.GetAccount(ctx, req.AccountID)
 	if err != nil {
-		ctx.JSON(http.StatusNotFound, errResponse(err)) // TODO: distinguish between "not found" and other errors
+		if db.IsNotFoundError(err) {
+			ctx.JSON(http.StatusNotFound, errResponse(ErrAccountNotFound))
+		} else {
+			ctx.JSON(http.StatusInternalServerError, errResponse(ErrInternalError))
+		}
 		return
 	}
 	if account.Owner != username {
-		err := fmt.Errorf("account does not belong to the authenticated user")
-		ctx.JSON(http.StatusForbidden, errResponse(err))
+		ctx.JSON(http.StatusForbidden, errResponse(ErrAccountNotMatch))
 		return
 	}
 
 	transfer, err := server.store.GetTransfer(ctx, req.ID)
 	if err != nil {
-		ctx.JSON(http.StatusNotFound, errResponse(err)) // TODO: distinguish between "not found" and other errors
+		if db.IsNotFoundError(err) {
+			ctx.JSON(http.StatusNotFound, errResponse(ErrTransferNotFound))
+		} else {
+			ctx.JSON(http.StatusInternalServerError, errResponse(ErrInternalError))
+		}
 		return
 	}
 	if transfer.FromAccountID != req.AccountID && transfer.ToAccountID != req.AccountID {
-		err := fmt.Errorf("transfer does not involve the specified account")
-		ctx.JSON(http.StatusForbidden, errResponse(err))
+		ctx.JSON(http.StatusForbidden, errResponse(ErrTransferNotMatch))
 		return
 	}
 
