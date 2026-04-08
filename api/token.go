@@ -30,7 +30,7 @@ func (server *Server) refreshToken(ctx *gin.Context) {
 
 	var req refreshTokenRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusBadRequest, errResponse(err))
+		ctx.JSON(http.StatusBadRequest, errResponse(ErrInvalidRequest))
 		return
 	}
 
