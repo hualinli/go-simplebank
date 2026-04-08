@@ -114,7 +114,7 @@ func (server *Server) updateUser(ctx *gin.Context) {
 	username := authorizationPayload.Username
 	var reqBody updateUserRequest
 	if err := ctx.ShouldBindJSON(&reqBody); err != nil {
-		ctx.JSON(http.StatusBadRequest, errResponse(err))
+		ctx.JSON(http.StatusBadRequest, errResponse(ErrInvalidRequest))
 		return
 	}
 
@@ -240,7 +240,7 @@ type loginUserResponse struct {
 func (server *Server) loginUser(ctx *gin.Context) {
 	var req loginUserRequest
 	if err := ctx.ShouldBindJSON(&req); err != nil {
-		ctx.JSON(http.StatusBadRequest, errResponse(err))
+		ctx.JSON(http.StatusBadRequest, errResponse(ErrInvalidRequest))
 		return
 	}
 

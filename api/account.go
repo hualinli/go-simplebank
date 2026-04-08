@@ -110,7 +110,7 @@ type listAccountsResponse struct {
 func (server *Server) listAccounts(ctx *gin.Context) {
 	var req listAccountsRequest
 	if err := ctx.ShouldBindQuery(&req); err != nil {
-		ctx.JSON(http.StatusBadRequest, errResponse(err))
+		ctx.JSON(http.StatusBadRequest, errResponse(ErrInvalidRequest))
 		return
 	}
 	authorizationPayload := ctx.MustGet(authorizationPayloadKey).(*token.Payload)
@@ -144,7 +144,7 @@ type deleteAccountRequest struct {
 func (server *Server) deleteAccount(ctx *gin.Context) {
 	var req deleteAccountRequest
 	if err := ctx.ShouldBindUri(&req); err != nil {
-		ctx.JSON(http.StatusBadRequest, errResponse(err))
+		ctx.JSON(http.StatusBadRequest, errResponse(ErrInvalidRequest))
 		return
 	}
 	authorizationPayload := ctx.MustGet(authorizationPayloadKey).(*token.Payload)
