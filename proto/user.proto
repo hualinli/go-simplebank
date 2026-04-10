@@ -1,0 +1,44 @@
+syntax = "proto3";
+
+package pb;
+
+import "google/protobuf/timestamp.proto";
+
+option go_package = "github.com/hualinli/go-simplebank/pb;pb";
+
+message User {
+  string                    username   = 1;
+  string                    full_name  = 2;
+  string                    email      = 3;
+  google.protobuf.Timestamp created_at = 4;
+}
+
+message CreateUserRequest {
+  string username  = 1;
+  string password  = 2;
+  string full_name = 3;
+  string email     = 4;
+}
+
+message CreateUserResponse {
+  User user = 1;
+}
+
+message LoginUserRequest {
+  string username = 1;
+  string password = 2;
+}
+
+message LoginUserResponse {
+  string access_token  = 1;
+  string refresh_token = 2;
+  User   user          = 3;
+}
+
+// SimpleBank defines user-related RPC methods.
+service SimpleBank {
+  // CreateUser creates a new user.
+  rpc CreateUser(CreateUserRequest) returns (CreateUserResponse);
+  // LoginUser authenticates a user and returns tokens.
+  rpc LoginUser(LoginUserRequest) returns (LoginUserResponse);
+}

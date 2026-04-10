@@ -82,3 +82,7 @@ func (server *Server) Start(address string) error {
 	return server.router.Run(address)
 }
 
+func (server *Server) TokenMaker() token.Maker {
+	return server.tokenMaker
+}
+

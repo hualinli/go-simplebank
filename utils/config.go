@@ -9,6 +9,7 @@ import (
 type Config struct {
 	DBSource             string        `mapstructure:"DB_SOURCE"`
 	ServerAddress        string        `mapstructure:"SERVER_ADDRESS"`
+	RPCServerAddress     string        `mapstructure:"RPC_SERVER_ADDRESS"`
 	TokenSymmetricKey    string        `mapstructure:"TOKEN_SYMMETRIC_KEY"`
 	AccessTokenDuration  time.Duration `mapstructure:"ACCESS_TOKEN_DURATION"`
 	RefreshTokenDuration time.Duration `mapstructure:"REFRESH_TOKEN_DURATION"`
@@ -23,6 +24,7 @@ func LoadConfig(path string) (Config, error) {
 
 	v.BindEnv("DB_SOURCE")
 	v.BindEnv("SERVER_ADDRESS")
+	v.BindEnv("RPC_SERVER_ADDRESS")
 	v.BindEnv("TOKEN_SYMMETRIC_KEY")
 	v.BindEnv("ACCESS_TOKEN_DURATION")
 	v.BindEnv("REFRESH_TOKEN_DURATION")
