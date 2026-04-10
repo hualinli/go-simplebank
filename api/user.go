@@ -313,3 +313,29 @@ func (server *Server) logoutUser(ctx *gin.Context) {
 	// 可以考虑在数据库里维护一个token黑名单，每次请求时都检查token是否在黑名单里，如果在就拒绝请求。或者直接让客户端删除token来实现登出功能。
 	ctx.JSON(http.StatusNotImplemented, errResponse(fmt.Errorf("not implemented")))
 }
+
+func (server *Server) profileUser(ctx *gin.Context) {
+	authorizationPayload := ctx.MustGet(authorizationPayloadKey).(*token.Payload)
+	username := authorizationPayload.Username
+
+	user, err := server.store.GetUser(ctx, username)
+	if err != nil {
+		if db.IsNotFoundError(err) {
+			ctx.JSON(http.StatusNotFound, errResponse(ErrUserNotFound))
+		} else if db.IsInternalError(err) {
+			ctx.JSON(http.StatusInternalServerError, errResponse(ErrInternalError))
+		} else {
+			ctx.JSON(http.StatusInternalServerError, errResponse(ErrUnknownError))
+		}
+		return
+	}
+
+	rsp := userResponse{
+		Username:  user.Username,
+		FullName:  user.FullName,
+		Email:     user.Email,
+		CreatedAt: user.CreatedAt.Time.Format(time.RFC3339),
+	}
+
+	ctx.JSON(http.StatusOK, rsp)
+}

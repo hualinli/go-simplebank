@@ -54,6 +54,7 @@ func (server *Server) setupRouter() {
 		authUsers.GET("/:username", server.getUser)
 		authUsers.PUT("/:username", server.updateUser)
 		authUsers.PUT("/:username/password", server.updateUserPassword)
+		authUsers.GET("/me", server.profileUser)
 		authUsers.POST("/logout", server.logoutUser)
 	}
 	a := router.Group("/accounts").Use(authMiddleware(server.tokenMaker))
@@ -85,4 +86,3 @@ func (server *Server) Start(address string) error {
 func (server *Server) TokenMaker() token.Maker {
 	return server.tokenMaker
 }
-
