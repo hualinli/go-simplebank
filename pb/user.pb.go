@@ -339,9 +339,8 @@ const file_user_proto_rawDesc = "" +
 	"\x11LoginUserResponse\x12!\n" +
 	"\faccess_token\x18\x01 \x01(\tR\vaccessToken\x12#\n" +
 	"\rrefresh_token\x18\x02 \x01(\tR\frefreshToken\x12\x1c\n" +
-	"\x04user\x18\x03 \x01(\v2\b.pb.UserR\x04user2\x83\x01\n" +
-	"\n" +
-	"SimpleBank\x12;\n" +
+	"\x04user\x18\x03 \x01(\v2\b.pb.UserR\x04user2\x84\x01\n" +
+	"\vUserService\x12;\n" +
 	"\n" +
 	"CreateUser\x12\x15.pb.CreateUserRequest\x1a\x16.pb.CreateUserResponse\x128\n" +
 	"\tLoginUser\x12\x14.pb.LoginUserRequest\x1a\x15.pb.LoginUserResponseB)Z'github.com/hualinli/go-simplebank/pb;pbb\x06proto3"
@@ -371,10 +370,10 @@ var file_user_proto_depIdxs = []int32{
 	5, // 0: pb.User.created_at:type_name -> google.protobuf.Timestamp
 	0, // 1: pb.CreateUserResponse.user:type_name -> pb.User
 	0, // 2: pb.LoginUserResponse.user:type_name -> pb.User
-	1, // 3: pb.SimpleBank.CreateUser:input_type -> pb.CreateUserRequest
-	3, // 4: pb.SimpleBank.LoginUser:input_type -> pb.LoginUserRequest
-	2, // 5: pb.SimpleBank.CreateUser:output_type -> pb.CreateUserResponse
-	4, // 6: pb.SimpleBank.LoginUser:output_type -> pb.LoginUserResponse
+	1, // 3: pb.UserService.CreateUser:input_type -> pb.CreateUserRequest
+	3, // 4: pb.UserService.LoginUser:input_type -> pb.LoginUserRequest
+	2, // 5: pb.UserService.CreateUser:output_type -> pb.CreateUserResponse
+	4, // 6: pb.UserService.LoginUser:output_type -> pb.LoginUserResponse
 	5, // [5:7] is the sub-list for method output_type
 	3, // [3:5] is the sub-list for method input_type
 	3, // [3:3] is the sub-list for extension type_name

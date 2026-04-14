@@ -13,7 +13,7 @@ import (
 )
 
 type Server struct {
-	pb.UnimplementedSimpleBankServer
+	pb.UnimplementedUserServiceServer
 	config     utils.Config
 	store      db.Store
 	tokenMaker token.Maker
@@ -37,7 +37,7 @@ func (server *Server) Start(address string) error {
 		return fmt.Errorf("cannot listen on address %s: %w", address, err)
 	}
 	grpcServer := grpc.NewServer()
-	pb.RegisterSimpleBankServer(grpcServer, server)
+	pb.RegisterUserServiceServer(grpcServer, server)
 	reflection.Register(grpcServer)
 	return grpcServer.Serve(lis)
 }
