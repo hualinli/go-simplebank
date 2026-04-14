@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/hualinli/go-simplebank/pb"
 	"github.com/hualinli/go-simplebank/token"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
@@ -29,8 +30,8 @@ func newAuthInterceptor(tokenMaker token.Maker) *authInterceptor {
 	return &authInterceptor{
 		tokenMaker: tokenMaker,
 		publicRPCMethods: map[string]bool{
-			"/pb.UserService/CreateUser": true,
-			"/pb.UserService/LoginUser":  true,
+			pb.UserService_CreateUser_FullMethodName: true,
+			pb.UserService_LoginUser_FullMethodName:  true,
 		},
 	}
 }
