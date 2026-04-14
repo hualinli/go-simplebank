@@ -36,7 +36,10 @@ func (server *Server) Start(address string) error {
 	if err != nil {
 		return fmt.Errorf("cannot listen on address %s: %w", address, err)
 	}
-	grpcServer := grpc.NewServer()
+	authInterceptor := newAuthInterceptor(server.tokenMaker)
+	grpcServer := grpc.NewServer(
+		grpc.UnaryInterceptor(authInterceptor.Unary()),
+	)
 	pb.RegisterUserServiceServer(grpcServer, server)
 	reflection.Register(grpcServer)
 	return grpcServer.Serve(lis)

@@ -2,6 +2,7 @@ package api
 
 import (
 	"fmt"
+	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gin-gonic/gin/binding"
@@ -81,6 +82,10 @@ func (server *Server) setupRouter() {
 }
 func (server *Server) Start(address string) error {
 	return server.router.Run(address)
+}
+
+func (server *Server) Handler() http.Handler {
+	return server.router
 }
 
 func (server *Server) TokenMaker() token.Maker {

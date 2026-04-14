@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"log"
+	"net/http"
 
 	"github.com/hualinli/go-simplebank/api"
 	db "github.com/hualinli/go-simplebank/db/sqlc"
@@ -40,8 +41,17 @@ func main() {
 		}
 	}()
 
-	log.Printf("start HTTP server at %s", cfg.ServerAddress)
-	err = server.Start(cfg.ServerAddress)
+	gatewayMux, err := gapi.NewGatewayMux(context.Background(), cfg)
+	if err != nil {
+		log.Fatal("cannot create gRPC gateway mux:", err)
+	}
+
+	httpMux := http.NewServeMux()
+	httpMux.Handle("/v1/", gatewayMux)
+	httpMux.Handle("/", server.Handler())
+
+	log.Printf("start HTTP server (gin + gateway) at %s", cfg.ServerAddress)
+	err = http.ListenAndServe(cfg.ServerAddress, httpMux)
 	if err != nil {
 		log.Fatal("cannot start server:", err)
 	}
