@@ -2,6 +2,7 @@ syntax = "proto3";
 
 package pb;
 
+import "google/api/annotations.proto";
 import "google/protobuf/timestamp.proto";
 
 option go_package = "github.com/hualinli/go-simplebank/pb;pb";
@@ -35,10 +36,34 @@ message LoginUserResponse {
   User   user          = 3;
 }
 
+message GetUserRequest {
+  string username = 1;
+}
+
+message GetUserResponse {
+  User user = 1;
+}
+
 // SimpleBank defines user-related RPC methods.
 service UserService {
   // CreateUser creates a new user.
-  rpc CreateUser(CreateUserRequest) returns (CreateUserResponse);
+  rpc CreateUser(CreateUserRequest) returns (CreateUserResponse) {
+    option (google.api.http) = {
+      post: "/v1/users"
+      body: "*"
+    };
+  }
   // LoginUser authenticates a user and returns tokens.
-  rpc LoginUser(LoginUserRequest) returns (LoginUserResponse);
+  rpc LoginUser(LoginUserRequest) returns (LoginUserResponse) {
+    option (google.api.http) = {
+      post: "/v1/users/login"
+      body: "*"
+    };
+  }
+  // GetUser fetches a user profile.
+  rpc GetUser(GetUserRequest) returns (GetUserResponse) {
+    option (google.api.http) = {
+      get: "/v1/users/{username}"
+    };
+  }
 }

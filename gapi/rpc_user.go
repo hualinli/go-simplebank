@@ -103,6 +103,40 @@ func (server *Server) LoginUser(ctx context.Context, req *pb.LoginUserRequest) (
 	return rsp, nil
 }
 
+func (server *Server) GetUser(ctx context.Context, req *pb.GetUserRequest) (*pb.GetUserResponse, error) {
+	if req == nil {
+		return nil, toRPCError(ErrInvalidRequest)
+	}
+
+	err := validateGetUserRequest(req.GetUsername())
+	if err != nil {
+		return nil, toRPCError(err)
+	}
+
+	authorizationPayload, err := authPayloadFromContext(ctx)
+	if err != nil {
+		return nil, toRPCError(err)
+	}
+
+	if authorizationPayload.Username != req.GetUsername() {
+		return nil, toRPCError(ErrUnauthorized)
+	}
+
+	user, err := server.store.GetUser(ctx, req.GetUsername())
+	if err != nil {
+		if db.IsNotFoundError(err) {
+			return nil, toRPCError(ErrUserNotFound)
+		}
+		return nil, toRPCError(ErrInternal)
+	}
+
+	rsp := &pb.GetUserResponse{
+		User: convertUser(&user),
+	}
+
+	return rsp, nil
+}
+
 func userAgentAndClientIP(ctx context.Context) (string, string) {
 	const defaultUA = "grpc-client"
 	const defaultIP = "unknown"

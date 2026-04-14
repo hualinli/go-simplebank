@@ -33,3 +33,11 @@ func validateLoginUserRequest(reqUsername, reqPassword string) error {
 	}
 	return nil
 }
+
+func validateGetUserRequest(reqUsername string) error {
+	if reqUsername == "" || !usernameRegex.MatchString(reqUsername) {
+		return ErrInvalidRequest
+	}
+
+	return nil
+}

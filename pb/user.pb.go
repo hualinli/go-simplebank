@@ -7,6 +7,7 @@
 package pb
 
 import (
+	_ "google.golang.org/genproto/googleapis/api/annotations"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
@@ -314,12 +315,100 @@ func (x *LoginUserResponse) GetUser() *User {
 	return nil
 }
 
+type GetUserRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Username      string                 `protobuf:"bytes,1,opt,name=username,proto3" json:"username,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetUserRequest) Reset() {
+	*x = GetUserRequest{}
+	mi := &file_user_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetUserRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetUserRequest) ProtoMessage() {}
+
+func (x *GetUserRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_user_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetUserRequest.ProtoReflect.Descriptor instead.
+func (*GetUserRequest) Descriptor() ([]byte, []int) {
+	return file_user_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *GetUserRequest) GetUsername() string {
+	if x != nil {
+		return x.Username
+	}
+	return ""
+}
+
+type GetUserResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	User          *User                  `protobuf:"bytes,1,opt,name=user,proto3" json:"user,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetUserResponse) Reset() {
+	*x = GetUserResponse{}
+	mi := &file_user_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetUserResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetUserResponse) ProtoMessage() {}
+
+func (x *GetUserResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_user_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetUserResponse.ProtoReflect.Descriptor instead.
+func (*GetUserResponse) Descriptor() ([]byte, []int) {
+	return file_user_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *GetUserResponse) GetUser() *User {
+	if x != nil {
+		return x.User
+	}
+	return nil
+}
+
 var File_user_proto protoreflect.FileDescriptor
 
 const file_user_proto_rawDesc = "" +
 	"\n" +
 	"\n" +
-	"user.proto\x12\x02pb\x1a\x1fgoogle/protobuf/timestamp.proto\"\x90\x01\n" +
+	"user.proto\x12\x02pb\x1a\x1cgoogle/api/annotations.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\x90\x01\n" +
 	"\x04User\x12\x1a\n" +
 	"\busername\x18\x01 \x01(\tR\busername\x12\x1b\n" +
 	"\tfull_name\x18\x02 \x01(\tR\bfullName\x12\x14\n" +
@@ -339,11 +428,16 @@ const file_user_proto_rawDesc = "" +
 	"\x11LoginUserResponse\x12!\n" +
 	"\faccess_token\x18\x01 \x01(\tR\vaccessToken\x12#\n" +
 	"\rrefresh_token\x18\x02 \x01(\tR\frefreshToken\x12\x1c\n" +
-	"\x04user\x18\x03 \x01(\v2\b.pb.UserR\x04user2\x84\x01\n" +
-	"\vUserService\x12;\n" +
+	"\x04user\x18\x03 \x01(\v2\b.pb.UserR\x04user\",\n" +
+	"\x0eGetUserRequest\x12\x1a\n" +
+	"\busername\x18\x01 \x01(\tR\busername\"/\n" +
+	"\x0fGetUserResponse\x12\x1c\n" +
+	"\x04user\x18\x01 \x01(\v2\b.pb.UserR\x04user2\x88\x02\n" +
+	"\vUserService\x12Q\n" +
 	"\n" +
-	"CreateUser\x12\x15.pb.CreateUserRequest\x1a\x16.pb.CreateUserResponse\x128\n" +
-	"\tLoginUser\x12\x14.pb.LoginUserRequest\x1a\x15.pb.LoginUserResponseB)Z'github.com/hualinli/go-simplebank/pb;pbb\x06proto3"
+	"CreateUser\x12\x15.pb.CreateUserRequest\x1a\x16.pb.CreateUserResponse\"\x14\x82\xd3\xe4\x93\x02\x0e:\x01*\"\t/v1/users\x12T\n" +
+	"\tLoginUser\x12\x14.pb.LoginUserRequest\x1a\x15.pb.LoginUserResponse\"\x1a\x82\xd3\xe4\x93\x02\x14:\x01*\"\x0f/v1/users/login\x12P\n" +
+	"\aGetUser\x12\x12.pb.GetUserRequest\x1a\x13.pb.GetUserResponse\"\x1c\x82\xd3\xe4\x93\x02\x16\x12\x14/v1/users/{username}B)Z'github.com/hualinli/go-simplebank/pb;pbb\x06proto3"
 
 var (
 	file_user_proto_rawDescOnce sync.Once
@@ -357,28 +451,33 @@ func file_user_proto_rawDescGZIP() []byte {
 	return file_user_proto_rawDescData
 }
 
-var file_user_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
+var file_user_proto_msgTypes = make([]protoimpl.MessageInfo, 7)
 var file_user_proto_goTypes = []any{
 	(*User)(nil),                  // 0: pb.User
 	(*CreateUserRequest)(nil),     // 1: pb.CreateUserRequest
 	(*CreateUserResponse)(nil),    // 2: pb.CreateUserResponse
 	(*LoginUserRequest)(nil),      // 3: pb.LoginUserRequest
 	(*LoginUserResponse)(nil),     // 4: pb.LoginUserResponse
-	(*timestamppb.Timestamp)(nil), // 5: google.protobuf.Timestamp
+	(*GetUserRequest)(nil),        // 5: pb.GetUserRequest
+	(*GetUserResponse)(nil),       // 6: pb.GetUserResponse
+	(*timestamppb.Timestamp)(nil), // 7: google.protobuf.Timestamp
 }
 var file_user_proto_depIdxs = []int32{
-	5, // 0: pb.User.created_at:type_name -> google.protobuf.Timestamp
+	7, // 0: pb.User.created_at:type_name -> google.protobuf.Timestamp
 	0, // 1: pb.CreateUserResponse.user:type_name -> pb.User
 	0, // 2: pb.LoginUserResponse.user:type_name -> pb.User
-	1, // 3: pb.UserService.CreateUser:input_type -> pb.CreateUserRequest
-	3, // 4: pb.UserService.LoginUser:input_type -> pb.LoginUserRequest
-	2, // 5: pb.UserService.CreateUser:output_type -> pb.CreateUserResponse
-	4, // 6: pb.UserService.LoginUser:output_type -> pb.LoginUserResponse
-	5, // [5:7] is the sub-list for method output_type
-	3, // [3:5] is the sub-list for method input_type
-	3, // [3:3] is the sub-list for extension type_name
-	3, // [3:3] is the sub-list for extension extendee
-	0, // [0:3] is the sub-list for field type_name
+	0, // 3: pb.GetUserResponse.user:type_name -> pb.User
+	1, // 4: pb.UserService.CreateUser:input_type -> pb.CreateUserRequest
+	3, // 5: pb.UserService.LoginUser:input_type -> pb.LoginUserRequest
+	5, // 6: pb.UserService.GetUser:input_type -> pb.GetUserRequest
+	2, // 7: pb.UserService.CreateUser:output_type -> pb.CreateUserResponse
+	4, // 8: pb.UserService.LoginUser:output_type -> pb.LoginUserResponse
+	6, // 9: pb.UserService.GetUser:output_type -> pb.GetUserResponse
+	7, // [7:10] is the sub-list for method output_type
+	4, // [4:7] is the sub-list for method input_type
+	4, // [4:4] is the sub-list for extension type_name
+	4, // [4:4] is the sub-list for extension extendee
+	0, // [0:4] is the sub-list for field type_name
 }
 
 func init() { file_user_proto_init() }
@@ -392,7 +491,7 @@ func file_user_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_user_proto_rawDesc), len(file_user_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   5,
+			NumMessages:   7,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
